@@ -870,7 +870,7 @@ SITES.forEach(s=>{ const half=(s.plat-1)/2*PLAT_GAP; s.side=[[],[]];
   s.ports=[...s.side[0],...s.side[1]]; });
 // pick the end of a platform track: the one asked for, else a free one nearest to the line
 function portFor(s,d,k,ref){ const L=s.side[d]; if(k!=null && L[k]!=null) return L[k];
-  let best=L[0], bs=1e9; for(const p of L){ const n=nodes[p], sc=(deg(p)>1?1e5:0)+(ref?Math.hypot(n.x-ref.x,n.y-ref.y):0); if(sc<bs){ bs=sc; best=p; } } return best; }
+  let best=L[0], bs=1e9; for(const p of L){ const n=nodes[p], sc=([...(adj.get(p)||[])].some(x=>!edges.get(ekey(p,x))?.internal)?1e5:0)+(ref?Math.hypot(n.x-ref.x,n.y-ref.y):0); if(sc<bs){ bs=sc; best=p; } } return best; }
 const BASE_NODES = nodes.length;
 const site = id => SITES.find(s => s.id===id);
 const consumers = SITES.filter(s => s.levels);
@@ -913,7 +913,7 @@ const costPts = (A,B) => Math.max(1,Math.round(Math.hypot(B.x-A.x,B.y-A.y)*RATE*
 function segCost(a,b){ return costPts(nodes[a],nodes[b]); }
 function addEdge(a,b,cost,internal){ edges.set(ekey(a,b),{a,b,len:dist(a,b),cost:cost==null?segCost(a,b):cost,internal:!!internal}); if(!adj.has(a)) adj.set(a,new Set()); if(!adj.has(b)) adj.set(b,new Set()); adj.get(a).add(b); adj.get(b).add(a); netVer++; }
 function delEdge(k){ const e=edges.get(k); edges.delete(k); adj.get(e.a)?.delete(e.b); adj.get(e.b)?.delete(e.a); netVer++; }
-const throatKeys=new Set();
+const throatKeys=new Set(), fanPorts=new Set();   // fanPorts: line ends that got switches to every platform (built from the station end, not from one track)
 function initStationGraph(){ for(const s of SITES){ for(const p of s.ports) addEdge(s.node,p,0,true);
   for(const L of s.side) for(let k=0;k<L.length-1;k++){ addEdge(L[k],L[k+1],0,true); throatKeys.add(ekey(L[k],L[k+1])); } } }
 initStationGraph();
@@ -963,7 +963,11 @@ function routePath(from,to,avoid,startPrev){
   while(open.size){ const [p,u]=open.pop(), ku=p+'>'+u; if(done.has(ku)) continue; done.add(ku); if(u===to){ endKey=ku; break; }
     const rev=nodeSite.has(u);   // trains may reverse inside a station
     let thrOrigin=null; if(p>=0 && throatKeys.has(ekey(p,u))){ let k=ku; while(k){ const [a,b]=k.split('>').map(Number); if(a<0 || !throatKeys.has(ekey(a,b))){ thrOrigin=a; break; } k=prev.get(k); } }
-    for(const v of adj.get(u)||[]){ const sw = portOf.has(u) && p>=0 && (nodeSite.has(p) || throatKeys.has(ekey(p,u)) || throatKeys.has(ekey(u,v))) && v!==p;   // station switches: no turn limit inside the throat
+    const inThr = p>=0 && throatKeys.has(ekey(p,u));
+    for(const v of adj.get(u)||[]){ const thrUV=throatKeys.has(ekey(u,v));
+      if(thrUV && !inThr && p>=0 && !nodeSite.has(p) && !fanPorts.has(u)) continue;          // a line joined to one track has no switches to the others
+      if(!thrUV && inThr && !nodeSite.has(v) && !fanPorts.has(u)) continue;
+      const sw = portOf.has(u) && p>=0 && (nodeSite.has(p) || throatKeys.has(ekey(p,u)) || throatKeys.has(ekey(u,v))) && v!==p;   // station switches: no turn limit inside the throat
       if(!rev && !sw && (v===p || (p>=0 && !turnOK(p,u,v)))) continue; const kv=u+'>'+v; if(done.has(kv)) continue;
       if(thrOrigin!==null && !throatKeys.has(ekey(u,v))){ const fromPlat=nodeSite.has(thrOrigin); if(fromPlat ? nodeSite.has(v) : !nodeSite.has(v)) continue; }
       const k=ekey(u,v); let w=edges.get(k).len; if(avoid && avoid.has(k)) w+=5000;
@@ -1359,8 +1363,8 @@ function splitEdge(k,x,y,act){ const e=edges.get(k), n=addNode(x,y), f=dist(e.a,
 function pickTarget(w){
   const s=siteAt(w.x,w.y,Math.max(55,36*worldPerPx())); if(s){ const c=nodes[s.node], dx=w.x-c.x, dy=w.y-c.y, lx=dx*s.ax[0]+dy*s.ax[1], ly=-dx*s.ax[1]+dy*s.ax[0], half=(s.plat-1)/2*PLAT_GAP;
     // tapped right on the platforms: join that track
-    const k = (s.plat>1 && Math.abs(lx)<s.plen/2+40 && Math.abs(ly)<half+9) ? Math.max(0,Math.min(s.plat-1,Math.round((ly+half)/PLAT_GAP))) : null;
-    const d = Math.abs(lx)>s.plen/2-18 ? (lx>0?1:0) : null;   // tapped near one end: build from that end
+    const k = (s.plat>1 && Math.abs(lx)<s.plen/2+6 && Math.abs(ly)<half+9) ? Math.max(0,Math.min(s.plat-1,Math.round((ly+half)/PLAT_GAP))) : null;
+    const d = Math.abs(lx)>s.plen/2-18 ? (lx>0?1:0) : null;   // tapped near one end: build from that end (in front of the end = switches to all tracks)
     return {kind:'station',s,k,d}; }
   const r=Math.max(14,22*worldPerPx());
   const n=nearestNode(w.x,w.y,r,isTrackNode); if(n>=0) return {kind:'node',id:n};
@@ -1373,39 +1377,48 @@ function contDirs(id){ const n=nodes[id]; return [...(adj.get(id)||[])].map(o=>u
 function arriveDirs(id){ const n=nodes[id]; return [...(adj.get(id)||[])].map(o=>unit(n.x,n.y,nodes[o].x,nodes[o].y)); } // heading into the existing track
 function bestDir(dirs,want){ let b=null, bd=-2; for(const d of dirs){ const v=dot2(d,want); if(v>bd){bd=v;b=d;} } return b; }
 // Waypoints for a new line: straight out of station ends, smooth joins onto existing track.
-function planBuildWith(A,B,sp0,ep0){
-  const tgt=targetPos(B), pts=[];
-  let S, sDir=null, sTh=0.2;
-  if(A.kind==='station'){ const c=nodes[A.s.node], ax=A.s.ax, east= sp0!=null ? sp0===1 : (tgt.x-c.x)*ax[0]+(tgt.y-c.y)*ax[1]>=0; S={id:portFor(A.s,east?1:0,A.k,tgt)}; sDir=east?[ax[0],ax[1]]:[-ax[0],-ax[1]]; sTh=0.999; }
+function edgeDir(P,want){ const e=edges.get(P.k); if(!e) return null; const d=unit(nodes[e.a].x,nodes[e.a].y,nodes[e.b].x,nodes[e.b].y); return dot2(d,want)>=0?d:[-d[0],-d[1]]; }
+// Waypoints for a new line: a smooth curve that leaves a station straight along its tracks and joins existing track tangentially.
+function planBuildWith(A,B,sp0,ep0,kf){
+  const tgt=targetPos(B); let S, sDir=null;
+  if(A.kind==='station'){ const c=nodes[A.s.node], ax=A.s.ax, east= sp0!=null ? sp0===1 : (tgt.x-c.x)*ax[0]+(tgt.y-c.y)*ax[1]>=0; S={id:portFor(A.s,east?1:0,A.k,tgt), fan:A.k==null}; sDir=east?[ax[0],ax[1]]:[-ax[0],-ax[1]]; }
   else if(A.kind==='node'){ S={id:A.id}; const n=nodes[A.id]; sDir=bestDir(contDirs(A.id),unit(n.x,n.y,tgt.x,tgt.y)); }
-  else if(A.kind==='edge') S={edge:A};
-  const sp = S.id!=null ? nodes[S.id] : {x:A.x,y:A.y};
-  pts.push(S);
-  if(sDir){ const d=unit(sp.x,sp.y,tgt.x,tgt.y); if(dot2(sDir,d)<sTh){ const lead={x:sp.x+sDir[0]*LEAD, y:sp.y+sDir[1]*LEAD}; pts.push(lead);
-      const d2=unit(lead.x,lead.y,tgt.x,tgt.y); if(dot2(sDir,d2)<0.1){ const side=(sDir[0]*d2[1]-sDir[1]*d2[0])>0?1:-1; pts.push({x:lead.x-sDir[1]*side*LEAD*1.3, y:lead.y+sDir[0]*side*LEAD*1.3}); } } }
-  const from = ptPos(pts[pts.length-1]);
-  let E, eDir=null, eTh=0.2;
-  if(B.kind==='station'){ const c=nodes[B.s.node], ax=B.s.ax, east= ep0!=null ? ep0===1 : (from.x-c.x)*ax[0]+(from.y-c.y)*ax[1]>=0; E={id:portFor(B.s,east?1:0,B.k,from)}; eDir=east?[-ax[0],-ax[1]]:[ax[0],ax[1]]; eTh=0.999; }
-  else if(B.kind==='node'){ E={id:B.id}; const n=nodes[B.id]; eDir=bestDir(arriveDirs(B.id),unit(from.x,from.y,n.x,n.y)); }
-  else if(B.kind==='edge') E={edge:B};
+  else if(A.kind==='edge'){ S={edge:A}; sDir=edgeDir(A,unit(A.x,A.y,tgt.x,tgt.y)); }
+  else S={x:A.x,y:A.y};
+  const sp=ptPos(S); let E, eDir=null;
+  if(B.kind==='station'){ const c=nodes[B.s.node], ax=B.s.ax, east= ep0!=null ? ep0===1 : (sp.x-c.x)*ax[0]+(sp.y-c.y)*ax[1]>=0; E={id:portFor(B.s,east?1:0,B.k,sp), fan:B.k==null}; eDir=east?[-ax[0],-ax[1]]:[ax[0],ax[1]]; }
+  else if(B.kind==='node'){ E={id:B.id}; const n=nodes[B.id]; eDir=bestDir(arriveDirs(B.id),unit(sp.x,sp.y,n.x,n.y)); }
+  else if(B.kind==='edge'){ E={edge:B}; eDir=edgeDir(B,unit(sp.x,sp.y,B.x,B.y)); }
   else E={x:B.x,y:B.y};
-  const ep = ptPos(E);
-  if(eDir){ const d=unit(from.x,from.y,ep.x,ep.y); if(dot2(eDir,d)<eTh){ const lead={x:ep.x-eDir[0]*LEAD, y:ep.y-eDir[1]*LEAD};
-      const d2=unit(from.x,from.y,lead.x,lead.y); if(dot2(eDir,d2)<0.1){ const side=(eDir[0]*d2[1]-eDir[1]*d2[0])>0?1:-1; pts.push({x:lead.x+eDir[1]*side*LEAD*1.3, y:lead.y-eDir[0]*side*LEAD*1.3}); }
-      pts.push(lead); } }
-  pts.push(E);
-  return pts;
+  const ep=ptPos(E), D=Math.hypot(ep.x-sp.x,ep.y-sp.y), c=Math.max(LEAD,D*kf);
+  const c1 = sDir ? {x:sp.x+sDir[0]*c, y:sp.y+sDir[1]*c} : {x:sp.x+(ep.x-sp.x)/3, y:sp.y+(ep.y-sp.y)/3};
+  const c2 = eDir ? {x:ep.x-eDir[0]*c, y:ep.y-eDir[1]*c} : {x:ep.x-(ep.x-sp.x)/3, y:ep.y-(ep.y-sp.y)/3};
+  const at=t=>{ const u=1-t; return {x:u*u*u*sp.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*ep.x, y:u*u*u*sp.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*ep.y}; };
+  // even spacing along the curve, denser where it bends
+  // points every ~70 units on straight parts and every ~11 degrees in bends, so curves stay round
+  const N=200, Q=[]; for(let i=0;i<=N;i++) Q.push(at(i/N));
+  const pts=[S]; if(sDir || eDir){ let acc=0, tw=0, last=sp;
+    for(let i=1;i<N;i++){ acc+=Math.hypot(Q[i].x-Q[i-1].x,Q[i].y-Q[i-1].y);
+      const u=unit(Q[i-1].x,Q[i-1].y,Q[i].x,Q[i].y), v=unit(Q[i].x,Q[i].y,Q[i+1].x,Q[i+1].y); tw+=Math.acos(Math.max(-1,Math.min(1,dot2(u,v))));
+      const left=Math.hypot(ep.x-Q[i].x,ep.y-Q[i].y);
+      if((acc>=70 || (tw>=0.19 && acc>=6)) && left>Math.min(30,acc*0.6)){ pts.push({x:Q[i].x,y:Q[i].y}); acc=0; tw=0; last=Q[i]; } } }
+  pts.push(E); return pts;
 }
-// Try both station ends and keep the shortest plan without hairpin turns.
+// Try both station ends and a few curve shapes; keep the cheapest one that is smooth, does not cross itself and stays off the platforms.
+function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unshift(nodes[A.s.node]); if(B.kind==='station') P.push(nodes[B.s.node]);
+  let cost=0, bad=0; const i0=A.kind==='station'?1:0, i1=P.length-(B.kind==='station'?2:1);
+  for(let i=i0;i<i1;i++) cost+=costPts(P[i],P[i+1]);
+  for(let i=1;i<P.length-1;i++){ const u=unit(P[i-1].x,P[i-1].y,P[i].x,P[i].y), v=unit(P[i].x,P[i].y,P[i+1].x,P[i+1].y); const d=dot2(u,v); if(d<TURN_MIN+0.05){ bad++; continue; } const th=Math.acos(Math.max(-1,Math.min(1,d))); if(th<0.02) continue; const l=Math.min(Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y),Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y)), R=l/th; if(R<22) bad++; else if(R<70) cost+=60*(70-R); }
+  if(A.kind==='node'||A.kind==='edge'){ const s=ptPos(pl[0]), q=ptPos(pl[1]), dirs=A.kind==='node'?contDirs(A.id):[edgeDir(A,unit(s.x,s.y,q.x,q.y))]; if(dirs.length && dirs[0] && Math.max(...dirs.map(d=>dot2(d,unit(s.x,s.y,q.x,q.y))))<0.5) bad++; }
+  if(B.kind==='node'||B.kind==='edge'){ const e=ptPos(pl[pl.length-1]), q=ptPos(pl[pl.length-2]), w=unit(q.x,q.y,e.x,e.y), dirs=B.kind==='node'?arriveDirs(B.id):[edgeDir(B,w)]; if(dirs.length && dirs[0] && Math.max(...dirs.map(d=>dot2(d,w)))<0.5) bad++; }
+  for(let i=i0;i<i1;i++) if(segHitsStation(P[i],P[i+1])) bad+=10;
+  for(let i=i0;i<i1;i++) for(let j=i+2;j<i1;j++) if(segX(P[i],P[i+1],P[j],P[j+1])!==null) bad+=5;
+  cost+=countNewCrossings(P.slice(i0,i1+1))*FLY_COST;
+  return cost+bad*1e7; }
 function planBuild(A,B){
   const so = A.kind==='station' ? (A.d!=null?[A.d]:[0,1]) : [null], eo = B.kind==='station' ? (B.d!=null?[B.d]:[0,1]) : [null];
   let best=null, bs=Infinity;
-  for(const a of so) for(const b of eo){ const pl=planBuildWith(A,B,a,b), P=pl.map(ptPos);
-    if(A.kind==='station') P.unshift(nodes[A.s.node]); if(B.kind==='station') P.push(nodes[B.s.node]);
-    let len=0, bad=0; for(let i=0;i<P.length-1;i++) len+=Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y);
-    for(let i=1;i<P.length-1;i++){ const u=unit(P[i-1].x,P[i-1].y,P[i].x,P[i].y), v=unit(P[i].x,P[i].y,P[i+1].x,P[i+1].y); const d=dot2(u,v); if(d<TURN_MIN+0.05) bad++; }
-    for(let i=(A.kind==='station'?1:0);i<P.length-(B.kind==='station'?2:1);i++) if(segHitsStation(P[i],P[i+1])) bad+=10;
-    const sc=len+bad*1e6; if(sc<bs){ bs=sc; best=pl; } }
+  for(const a of so) for(const b of eo) for(const kf of [0.3,0.45,0.65,0.9,1.25]){ const pl=planBuildWith(A,B,a,b,kf), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   return best;
 }
 const ptPos = p => p.id!=null ? nodes[p.id] : (p.edge ? p.edge : p);
@@ -1427,6 +1440,7 @@ function buildPoints(pts,act){
   for(let i=0;i<P.length-1;i++) if(segHitsStation(P[i],P[i+1])){ toast(L('Trať nemůže vést přes nádraží. Napoj ji na konec stanice z druhé strany nebo veď ji kolem.','A line cannot run across a station. Join it at the other end of the station or route it around.','Eine Strecke darf nicht über einen Bahnhof führen. Schließe sie am anderen Ende an oder führe sie außen herum.'),'bad'); return -1; }
   for(const p of pts) if(p.edge && edgeBusy(p.edge.k)){ toast(L('Po téhle koleji zrovna jede vlak.','A train is on this track right now.','Gerade fährt ein Zug auf diesem Gleis.'),'bad'); return -1; }
   const ids=pts.map(p=> p.id!=null ? p.id : (p.edge ? (edges.has(p.edge.k) ? splitEdge(p.edge.k,p.edge.x,p.edge.y,act) : addNode(p.edge.x,p.edge.y)) : addNode(p.x,p.y)));
+  pts.forEach((p,i)=>{ if(p.fan && portOf.has(ids[i])) fanPorts.add(ids[i]); });
   let spent=0; for(let i=0;i<ids.length-1;i++) spent+=addSegment(ids[i],ids[i+1],act);
   if(fly){ spent+=fly*FLY_COST; toast(L(`Trať přejede ${fly}× jinou trať po mostě (${fmtK(fly*FLY_COST)}).`,`The line crosses another line ${fly}× on a bridge (${fmtK(fly*FLY_COST)}).`,`Die Strecke überquert ${fly}× eine andere auf einer Brücke (${fmtK(fly*FLY_COST)}).`),'good'); }
   if(spent) sndBuild();
@@ -1726,8 +1740,9 @@ function trackSegments(){
     for(const f of flyovers){ if(f.e!==e) continue; const d=f.t*e.len, c0=d-FLY_HALF, c1=d+FLY_HALF, out=[]; for(const [p0,p1] of pieces){ if(c1<=p0||c0>=p1){ out.push([p0,p1]); continue; } if(c0>p0) out.push([p0,c0]); if(c1<p1) out.push([c1,p1]); } pieces=out; }
     for(const [p0,p1] of pieces) if(p1-p0>0.5) segs.push({x1:A.x+ux*p0,y1:A.y+uy*p0,x2:A.x+ux*p1,y2:A.y+uy*p1}); }
   // station throat: switches from every platform track to each line leaving that end
-  for(const st of SITES) for(const L of st.side){ for(const pj of L){ const ext=[...(adj.get(pj)||[])].filter(x=>!edges.get(ekey(pj,x)).internal); if(!ext.length) continue;
+  for(const st of SITES) for(const L of st.side){ for(const pj of L){ const ext=[...(adj.get(pj)||[])].filter(x=>!edges.get(ekey(pj,x)).internal); if(!ext.length){ fanPorts.delete(pj); continue; }
       const po=portOf.get(pj), J=nodes[pj], X={x:J.x+st.ax[0]*po.dir*18, y:J.y+st.ax[1]*po.dir*18}; segs.push({x1:J.x,y1:J.y,x2:X.x,y2:X.y});
+      if(!fanPorts.has(pj)) continue;
       for(const pk of L){ if(pk===pj) continue; const K=nodes[pk]; segs.push({x1:K.x,y1:K.y,x2:X.x,y2:X.y}); } } }
   for(const [n,set] of adj){ if(set.size!==2) continue; const [a,b]=[...set]; if(!isCorner(n,a,b)) continue; const N=nodes[n], R=cornerR(n);
     const [ax,ay]=unit(N.x,N.y,nodes[a].x,nodes[a].y), [bx,by]=unit(N.x,N.y,nodes[b].x,nodes[b].y);
@@ -2115,9 +2130,9 @@ const HINTS={
   route:()=>L('Klepej na stanice v pořadí, kudy má vlak jet. Klepnutím na kolej mezi stanicemi (třeba druhou kolej výhybny) určíš, kudy má vlak projet. Klepnutím přímo na kolej ve stanici zvolíš, na kterou kolej vlak přijede – na okruhu tak může jet jinudy tam a jinudy zpět. Světle modrá je právě přidaná cesta, tmavě modrá zbytek trasy a cesta zpátky na start. Pak dej Hotovo a vyber vozy.',
     'Tap the stations in the order the train should visit them. Tap a track between stations (for example the second track of a passing loop) to send the train that way. Tap a platform track to choose which track the train arrives on – on a loop it can go one way and come back the other. Light blue is the leg you just added, dark blue the rest of the route and the way back to the start. Then tap Done and pick wagons.',
     'Tippe die Bahnhöfe in der Reihenfolge an, die der Zug fahren soll. Tippe auf ein Gleis zwischen den Bahnhöfen (z. B. das zweite Gleis einer Ausweiche), damit der Zug dort entlangfährt. Tippe auf ein Bahnsteiggleis, um das Ankunftsgleis zu wählen – auf einem Ring fährt der Zug so hin und zurück auf verschiedenen Wegen. Hellblau ist der neue Abschnitt, dunkelblau der Rest und der Rückweg zum Start. Dann auf Fertig tippen und Wagen wählen.'),
-  track:()=>L('Klepni na stanici nebo kolej a pak na cíl, nebo táhni prstem od startu k cíli – trať se postaví rovně, až prst zvedneš. Klepnutím přímo na kolej ve stanici se napojíš na ni. Kilometr stojí 75 mincí, v tunelu 150. Na počítači: klikni na start a na cíl, tažením myší posouváš mapu, dvojklikem přibližuješ.',
-    'Tap a station or track, then the destination, or drag from start to destination – the line is built straight when you lift your finger. Tap a platform track to join that track. A kilometre costs 75 coins, 150 in a tunnel. On a computer: click the start and the destination, drag the mouse to move the map, double-click to zoom in.',
-    'Tippe auf einen Bahnhof oder ein Gleis und dann aufs Ziel, oder ziehe vom Start zum Ziel – die Strecke wird gerade gebaut, wenn du loslässt. Tippe auf ein Bahnsteiggleis, um genau dort anzuschließen. Ein Kilometer kostet 75 Münzen, im Tunnel 150. Am Computer: Start und Ziel anklicken, mit gedrückter Maus verschieben, Doppelklick zoomt hinein.'),
+  track:()=>L('Klepni na stanici nebo kolej a pak na cíl, nebo táhni prstem od startu k cíli – trať se postaví v plynulém oblouku, až prst zvedneš. Klepneš-li na konkrétní kolej ve stanici, napojí se jen na ni. Klepneš-li před konec nástupišť, dostane trať výhybky na všechny koleje. Kilometr stojí 75 mincí, v tunelu 150. Na počítači: klikni na start a na cíl, tažením myší posouváš mapu, dvojklikem přibližuješ.',
+    'Tap a station or track, then the destination, or drag from start to destination – the line is built as a smooth curve when you lift your finger. Tap one platform track to join only that track; tap just past the platform ends to get switches to all tracks. A kilometre costs 75 coins, 150 in a tunnel. On a computer: click the start and the destination, drag the mouse to move the map, double-click to zoom in.',
+    'Tippe auf einen Bahnhof oder ein Gleis und dann aufs Ziel, oder ziehe vom Start zum Ziel – die Strecke wird als sanfter Bogen gebaut, wenn du loslässt. Tippe auf ein Bahnsteiggleis, um nur dort anzuschließen; tippe kurz hinter das Bahnsteigende für Weichen zu allen Gleisen. Ein Kilometer kostet 75 Münzen, im Tunnel 150. Am Computer: Start und Ziel anklicken, mit gedrückter Maus verschieben, Doppelklick zoomt hinein.'),
   signal:()=>L('Návěstidlo kryje úsek (oddíl) až k dalšímu návěstidlu nebo stanici. Když je oddíl obsazený, ukazuje stůj a vlak počká. Každá odbočka dostane výhybku a návěstidla sama, před stanicí stojí vjezdové návěstidlo. Na jednokolejce postav výhybnu (krátkou druhou kolej) – vlaky se v ní vyhnou. 600 mincí.',
     'A signal protects the section up to the next signal or station. If the section is occupied, the train waits. Every junction gets a switch and signals automatically. A train leaving a station waits if the section ahead is taken. 600 coins.',
     'Ein Signal sichert den Abschnitt bis zum nächsten Signal oder Bahnhof. Ist er belegt, wartet der Zug. Jede Abzweigung bekommt automatisch eine Weiche und Signale. Ein Zug im Bahnhof wartet, wenn der Abschnitt dahinter belegt ist. 600 Münzen.'),
@@ -2496,13 +2511,13 @@ function paintPlayer(){ $('playerName').textContent=tx(playerView.name); saveSta
 function snapshotState(){
   return { v:7, base:BASE_NODES, money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
     nodes:nodes.slice(BASE_NODES).map(n=>[Math.round(n.x*10)/10,Math.round(n.y*10)/10]),
-    edges:[...edges.values()].filter(e=>!e.internal).map(e=>[e.a,e.b,e.cost]), signals:[...signals], entry:[...entrySig],
+    edges:[...edges.values()].filter(e=>!e.internal).map(e=>[e.a,e.b,e.cost]), signals:[...signals], entry:[...entrySig], fan:[...fanPorts],
     sites:SITES.map(s=>({id:s.id,lvl:s.lvl,log:s.log,since:s.since,best:s.best,done:s.done,stock:s.stock,inbuf:s.inbuf,tm:s.tm})),
     trains:trains.map(t=>({id:t.id,auto:t.auto,plats:t.plats,vias:t.vias,name:t.name,color:t.color,consist:t.consist,route:t.route,start:t.start,every:t.every,waits:t.waits,earned:t.earned||0,ran:t.ran||0,bought:t.bought||0})), savedAt:new Date().toISOString() };
 }
 function clearWorld(){
   for(const t of trains) removeTrainMesh(t); trains=[]; occ.clear(); edges.clear(); adj.clear(); signals.clear(); entrySig.clear(); anchor=null; history.length=0; renderUndo(); netVer++;
-  nodes.length=BASE_NODES; initStationGraph();
+  nodes.length=BASE_NODES; fanPorts.clear(); initStationGraph();
   SITES.forEach(initSiteState);
 SITES.forEach(s=>{ s.plen = s.kind==='city' ? 104 : 60; s.front = s.plen/2-8; }); won=false; goalHit=false; incomeLog=[]; curRate=-1; built=0; deliveries=0; crashes=0; score=0; gameMin=360; money=START_MONEY; nextId=1;
 }
@@ -2512,6 +2527,7 @@ function loadState(st){
   money=st.money; score=st.score||0; built=st.built||0; deliveries=st.deliveries||0; crashes=st.crashes||0; won=!!st.won; gameMin=st.gameMin||360; goalHit=!!st.goalHit; incomeLog=st.incomeLog||[]; curRate=-1;
   for(const [x,y] of st.nodes||[]) addNode(x,y);
   for(const [a,b,c] of st.edges||[]) if(nodes[a]&&nodes[b]) addEdge(a,b,c);
+  if(st.fan) st.fan.forEach(p=>fanPorts.add(p)); else for(const p of portOf.keys()) if([...(adj.get(p)||[])].some(x=>!edges.get(ekey(p,x)).internal)) fanPorts.add(p);
   for(const s of st.signals||[]) if(nodes[s]) signals.add(s); for(const s of st.entry||[]) if(nodes[s]) entrySig.add(s);
   for(const x of st.sites||[]){ const s=site(x.id); if(!s) continue; Object.assign(s.stock,x.stock||{}); Object.assign(s.inbuf,x.inbuf||{}); s.tm=x.tm||{}; if(s.levels){ s.lvl=x.lvl||0; s.log=x.log||[]; s.since=x.since||0; s.best=x.best||0; s.got={}; s.done=!!x.done; } }
   for(const t of st.trains||[]) if(t.route.every(id=>site(id))) makeTrain(t);
@@ -2648,27 +2664,34 @@ function sndInit(){
 ['pointerdown','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,sndInit,{passive:true}));
 sndBtnPaint();
 // how loud something at (x,y) is for the listener, and where it sits left/right
-function hearing(x,y){ const lx=target.x+CX, ly=target.z+CZ, d=Math.hypot(x-lx,y-ly), R=50+camD*0.45, zf=Math.max(0.12,Math.min(1,1.15-Math.log(camD/110)/Math.log(28)));
+function hearing(x,y){ const lx=target.x+CX, ly=target.z+CZ, d=Math.hypot(x-lx,y-ly), R=50+camD*0.45, zf=Math.max(0.05,Math.min(1,1.15-Math.log(camD/110)/Math.log(22)));
   const att=1/(1+(d/R)*(d/R)); let pan=0; if(SND.ctx){ _pv.set(x-CX,0,y-CZ).project(camera); pan=Math.max(-1,Math.min(1,_pv.x)); }
   return {g:att*zf, pan, att, zf}; }
 function setG(param,v){ if(SND.ctx) param.setTargetAtTime(v,SND.ctx.currentTime,0.15); }
 function sndUpdate(){ if(!SND.ready) return; const ctx=SND.ctx;
-  const zf=Math.max(0.12,Math.min(1,1.15-Math.log(camD/110)/Math.log(28))); setG(SND.wind.gain, 0.05+0.07*(1-zf));
-  for(const v of SND.voices){ const h=hearing(v.x,v.y); let g=v.base*h.g; if(v.kind==='city' && daylight()<0.3) g*=0.45; if(v.kind==='airport' && planeT>=0) g*=3.2;
-    setG(v.out.gain, g); if(v.pan) setG(v.pan.pan, h.pan*0.8); v.h=h.g; }
+  const zf=Math.max(0.05,Math.min(1,1.15-Math.log(camD/110)/Math.log(22))); setG(SND.wind.gain, 0.03+0.03*(1-zf));
+  // all places together must never get louder than one place heard up close
+  const gs=SND.voices.map(v=>{ const h=hearing(v.x,v.y); let g=v.base*h.g; if(v.kind==='city' && daylight()<0.3) g*=0.45; if(v.kind==='airport' && planeT>=0) g*=3.2; v.h=h.g; return [g,h]; });
+  const sum=gs.reduce((a,x)=>a+x[0],0); SND.norm=Math.min(1,(0.06+0.2*zf)/(sum||1));
+  SND.voices.forEach((v,i)=>{ setG(v.out.gain, gs[i][0]*SND.norm); if(v.pan) setG(v.pan.pan, gs[i][1].pan*0.8); });
   // trains: pick the most audible ones
   const ranked=trains.filter(t=>t.parts && t.st!=='dead').map(t=>{ const m=t.parts[0].position; const h=hearing(m.x+CX,m.z+CZ); return {t,h}; }).sort((a,b)=>b.h.g-a.h.g).slice(0,SND.trainV.length);
   SND.trainV.forEach((tv,i)=>{ const r=ranked[i]; if(!r || r.h.g<0.004){ setG(tv.out.gain,0); tv.tr=null; return; }
     const t=r.t, moving=t.st==='run', sp=SPEEDS[speedIdx]?1:0; tv.tr=t;
-    setG(tv.out.gain, r.h.g*(moving?0.32:0.12)*(sp?1:0.3)); if(tv.pan) setG(tv.pan.pan, r.h.pan*0.8);
+    setG(tv.out.gain, r.h.g*(moving?0.32:0.12)*(sp?1:0.3)*(0.35+0.65*zf)); if(tv.pan) setG(tv.pan.pan, r.h.pan*0.8);
     setG(tv.o.frequency, moving?78+Math.min(3,SPEEDS[speedIdx])*6:52); setG(tv.o2.frequency, moving?156:104); setG(tv.rg.gain, moving?0.9:0.15);
     // wheels over rail joints: ta-dam ... ta-dam
     if(moving && sp){ tv.clk-=0.1*Math.min(4,SPEEDS[speedIdx]); if(tv.clk<=0){ tv.clk=0.9; clack(tv.out,0); clack(tv.out,0.13); } } }); }
 setInterval(sndUpdate,100);
+// leaving the game (other app, other tab, screen off) silences it at once
+function sndPause(off){ if(!SND.ctx) return; try{ if(off) SND.ctx.suspend(); else if(SND.on) SND.ctx.resume(); }catch(e){} }
+document.addEventListener('visibilitychange',()=>sndPause(document.hidden));
+window.addEventListener('pagehide',()=>sndPause(true)); window.addEventListener('pageshow',()=>sndPause(document.hidden));
+window.addEventListener('blur',()=>sndPause(true)); window.addEventListener('focus',()=>sndPause(false));
 // --- one-shot sounds ---
 function envGain(at,peak,a,d){ const g=SND.ctx.createGain(), t=SND.ctx.currentTime+at; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d); return g; }
 function clack(out,at){ if(!SND.ready) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.white; const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1700; f.Q.value=2; const g=envGain(at,0.9,0.003,0.07); s.connect(f); f.connect(g); g.connect(out); s.start(ctx.currentTime+at,Math.random()*2,0.12); }
-function placed(x,y,mult){ if(!SND.ready || !SND.on) return null; const h=hearing(x,y), g=h.g*(mult||1); if(g<0.01) return null; const ctx=SND.ctx, out=ctx.createGain(); out.gain.value=g;
+function placed(x,y,mult){ if(!SND.ready || !SND.on || document.hidden) return null; const h=hearing(x,y), g=h.g*(mult||1)*(SND.norm==null?1:Math.max(0.35,SND.norm)); if(g<0.01) return null; const ctx=SND.ctx, out=ctx.createGain(); out.gain.value=g;
   if(ctx.createStereoPanner){ const p=ctx.createStereoPanner(); p.pan.value=h.pan*0.8; out.connect(p); p.connect(SND.master); } else out.connect(SND.master); setTimeout(()=>{ try{ out.disconnect(); }catch(e){} },6000); return out; }
 function sndHorn(x,y,two){ const out=placed(x,y,0.5); if(!out) return; const ctx=SND.ctx;
   [[0,0.55,370],[two?0.6:-1,0.5,311]].forEach(([at,len,f])=>{ if(at<0) return; for(const m of [1,1.5]){ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=f*m; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1800; const g=envGain(at,0.18/m,0.03,len); o.connect(lp); lp.connect(g); g.connect(out); o.start(ctx.currentTime+at); o.stop(ctx.currentTime+at+len+0.1); } }); }
@@ -2686,7 +2709,7 @@ function sndBird(x,y){ const out=placed(x,y,0.3); if(!out) return; const ctx=SND
 function sndJet(x,y){ const out=placed(x,y,1.2); if(!out) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.pink; const f=ctx.createBiquadFilter(); f.type='lowpass'; const t=ctx.currentTime;
   f.frequency.setValueAtTime(300,t); f.frequency.exponentialRampToValueAtTime(2600,t+3); f.frequency.exponentialRampToValueAtTime(500,t+7); const g=envGain(0,0.9,1.5,5.5); s.connect(f); f.connect(g); g.connect(out); s.start(t,0,7.5); }
 function sndBoom(x,y){ const out=placed(x,y,2.5) || (SND.ready&&SND.on?placedUI(0.5):null); if(!out) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.brown; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; const g=envGain(0,1,0.01,2.4); s.connect(f); f.connect(g); g.connect(out); s.start(ctx.currentTime,Math.random(),2.6); }
-function placedUI(v){ if(!SND.ready || !SND.on) return null; const g=SND.ctx.createGain(); g.gain.value=v; g.connect(SND.master); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },4000); return g; }
+function placedUI(v){ if(!SND.ready || !SND.on || document.hidden) return null; const g=SND.ctx.createGain(); g.gain.value=v; g.connect(SND.master); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },4000); return g; }
 function sndCoin(x,y){ const out=placed(x,y,0.5) || placedUI(0.05); if(!out) return; const ctx=SND.ctx; [[0,1319],[0.07,1760]].forEach(([at,f])=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=envGain(at,0.25,0.005,0.35); o.connect(g); g.connect(out); o.start(ctx.currentTime+at); o.stop(ctx.currentTime+at+0.5); }); }
 function sndBuild(){ const out=placedUI(0.35); if(!out) return; const ctx=SND.ctx; for(let k=0;k<3;k++){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=180-k*20; const g=envGain(k*0.09,0.5,0.005,0.12); o.connect(g); g.connect(out); o.start(ctx.currentTime+k*0.09); o.stop(ctx.currentTime+k*0.09+0.2); } }
 function sndFanfare(){ const out=placedUI(0.3); if(!out) return; const ctx=SND.ctx; [523,659,784,1047].forEach((f,k)=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=envGain(k*0.11,0.3,0.01,0.35); o.connect(g); g.connect(out); o.start(ctx.currentTime+k*0.11); o.stop(ctx.currentTime+k*0.11+0.5); }); }
