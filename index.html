@@ -869,8 +869,9 @@ SITES.forEach(s=>{ const half=(s.plat-1)/2*PLAT_GAP; s.side=[[],[]];
   for(let k=0;k<s.plat;k++){ const oz=k*PLAT_GAP-half; for(const d of [0,1]){ const p=addNode(...toW(s,d?s.plen/2+4:-s.plen/2-8,oz)); s.side[d].push(p); portOf.set(p,{s,dir:d?1:-1,k}); } }
   s.ports=[...s.side[0],...s.side[1]]; });
 // pick the end of a platform track: the one asked for, else a free one nearest to the line
-function portFor(s,d,k,ref){ const L=s.side[d]; if(k!=null && L[k]!=null) return L[k];
-  let best=L[0], bs=1e9; for(const p of L){ const n=nodes[p], sc=([...(adj.get(p)||[])].some(x=>!edges.get(ekey(p,x))?.internal)?1e5:0)+(ref?Math.hypot(n.x-ref.x,n.y-ref.y):0); if(sc<bs){ bs=sc; best=p; } } return best; }
+const portUsed = p => [...(adj.get(p)||[])].some(x=>!edges.get(ekey(p,x))?.internal);
+function portFor(s,d,k,ref){ const L=s.side[d]; if(k!=null && L[k]!=null && !portUsed(L[k])) return L[k]; if(k!=null && L[k]!=null) ref=nodes[L[k]];
+  let best=L[0], bs=1e9; for(const p of L){ const n=nodes[p], po=portOf.get(p), opp=s.side[1-d][po.k], sc=(portUsed(p)?1e5:0)+(opp!=null && portUsed(opp)?-400:0)+(ref?Math.hypot(n.x-ref.x,n.y-ref.y):0); if(sc<bs){ bs=sc; best=p; } } return best; }
 const BASE_NODES = nodes.length;
 const site = id => SITES.find(s => s.id===id);
 const consumers = SITES.filter(s => s.levels);
@@ -1113,13 +1114,14 @@ function conflictHtml(c){
 /* ================= trains ================= */
 const OFFS = i => i===0 ? 0 : 12.6+(i-1)*11.6;
 const stopNode=(tr,i)=>site(tr.route[i]).node;
-const trainsAt=node=>trains.filter(o=>o.at===node && (o.st==='dwell'||o.st==='ready'||o.st==='notrack'));
+const trainsAt=node=>trains.filter(o=>(o.at===node && (o.st==='dwell'||o.st==='ready'||o.st==='notrack')) || (o.st==='hold' && o.path && o.pi===0 && o.path[0]===node && o.plat>=0));
 function freePlat(node,except){ const s=nodeSite.get(node), used=new Set(trainsAt(node).filter(o=>o!==except).map(o=>o.plat)); for(let k=0;k<s.plat;k++) if(!used.has(k)) return k; return -1; }
 const stationFull=(node,tr)=>trainsAt(node).filter(o=>o!==tr).length >= nodeSite.get(node).plat;
 // A train stands on the platform track it will leave by, and enters only the track its line leads to.
 const stationBlock = s => s.ports.map(q=>ekey(s.node,q));
 function occupiedInto(dest,tr){ const d=nodeSite.get(dest), out=[]; if(!d) return out;
   if(tr && tr._wantK!=null && tr._wantK<d.plat){ for(let k=0;k<d.plat;k++) if(k!==tr._wantK) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; } const used=new Set(trainsAt(dest).filter(o=>o!==tr).map(o=>o.plat));
+  for(const o of trains){ if(o===tr || o.st!=='run' && o.st!=='hold' || !o.path || o.path[o.path.length-1]!==dest || (o.pi===0 && o.path[0]===dest)) continue; const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); }
   for(let k=0;k<d.plat;k++) if(used.has(k)) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; }
 function routeFromPlat(s,k,to,tr){ const own=s.ports.filter(q=>portOf.get(q).k!==k).map(q=>ekey(s.node,q));
   let r=routePath(s.node,to,new Set([...own,...occupiedInto(to,tr)])); if(!r) r=routePath(s.node,to,new Set(own));
@@ -1127,13 +1129,13 @@ function routeFromPlat(s,k,to,tr){ const own=s.ports.filter(q=>portOf.get(q).k!=
 // a leg may be forced through chosen track points (e.g. the second track of a passing loop)
 function pathWithVias(tr,from,to,vias){ const targets=[...((vias||[]).filter(v=>nodes[v] && deg(v))),to]; let full=null, cur=from, prv=null;
   for(let i=0;i<targets.length;i++){ const tg=targets[i], av=tg===to?new Set(occupiedInto(to,tr)):null; let seg;
-    if(i===0){ const s0=nodeSite.get(from); seg=(s0 && tr && tr.plat>=0 && routeFromPlat(s0,tr.plat,tg,tr)) || routePath(from,tg,av) || routePath(from,tg); }
+    if(i===0){ const s0=nodeSite.get(from); seg = (s0 && tr && tr.plat>=0) ? routeFromPlat(s0,tr.plat,tg,tr) : (routePath(from,tg,av) || routePath(from,tg)); if(!seg && s0 && tr){ tr._noTrackK=tr.plat; } }
     else seg=routePath(cur,tg,av,prv) || routePath(cur,tg,null,prv) || routePath(cur,tg);
     if(!seg) return i>0 ? (routePath(from,to,null) ) : null;
     full = full ? full.concat(seg.slice(1)) : seg; prv=full.length>1?full[full.length-2]:null; cur=tg; }
   return full; }
 function choosePlat(tr,node,to){ const s=nodeSite.get(node), used=new Set(trainsAt(node).filter(o=>o!==tr).map(o=>o.plat));
-  if(to!=null) for(let k=0;k<s.plat;k++) if(!used.has(k) && routeFromPlat(s,k,to,tr)) return k;
+  if(to!=null){ for(let k=0;k<s.plat;k++) if(!used.has(k) && routeFromPlat(s,k,to,tr)) return k; for(let k=0;k<s.plat;k++) if(routeFromPlat(s,k,to,tr)) return k; }
   return freePlat(node,tr); }
 function placeAt(tr,i){ tr.stopIdx=i; tr.at=stopNode(tr,i); tr.plat=choosePlat(tr,tr.at,tr.route.length>1?stopNode(tr,(i+1)%tr.route.length):null); tr.path=null; tr.pi=0; tr.t=0; tr.trail=[]; }
 function makeTrain(def){
@@ -1149,10 +1151,11 @@ function depart(tr){
   const n=tr.route.length, next=(tr.stopIdx+1)%n, from=tr.at, to=stopNode(tr,next);
   tr._wantK=(tr.plats||[])[next]; if(tr._wantK===undefined) tr._wantK=null;
   const path=pathWithVias(tr,from,to,(tr.vias||[])[tr.stopIdx]);
-  if(!path){ tr.st='notrack'; tr.check=5; tr.why=L('chybí trať','no track','kein Gleis')+' → '+site(tr.route[next]).name; return; }
+  if(!path){ tr.st='notrack'; tr.check=5; const sn=site(tr.route[tr.stopIdx]).name, tn=site(tr.route[next]).name, kk=(tr._noTrackK??-1)+1;
+    tr.why = kk>0 && nodeSite.get(from).plat>1 ? L(`z koleje ${kk} v ${sn} nevede trať do ${tn} – připoj tu kolej nebo postav výhybku`,`no line from track ${kk} at ${sn} to ${tn} – connect that track or build a switch`,`von Gleis ${kk} in ${sn} führt keine Strecke nach ${tn} – Gleis anschließen oder Weiche bauen`) : L('chybí trať','no track','kein Gleis')+' → '+tn; tr._noTrackK=null; return; }
   if(tr.stopIdx===0) tr.cycleBase=tr.plannedDep;
   tr.delay=Math.max(0,Math.round(gameMin-tr.plannedDep));
-  tr.nextIdx=next; tr.path=path; tr.pi=0; tr.t=0; tr.at=null; tr.plat=-1; tr.legStart=gameMin;
+  tr.nextIdx=next; tr.path=path; tr.pi=0; tr.t=0; tr.at=null; tr.legStart=gameMin;
   const A=NP(path,0), B=NP(path,1), [ux,uy]=unit(A.x,A.y,B.x,B.y);
   tr.trail=[]; for(let d=0; d<=130; d+=2) tr.trail.push({x:A.x-ux*d, y:A.y-uy*d});
   tr.ang=Math.atan2(uy,ux);
@@ -1180,8 +1183,14 @@ function blockBusy(b,tr){
   for(const o of trains){ if(o===tr) continue; if(o.st==='run' && es.has(curEdge(o))) return true; const sn=stoppedNode(o); if(sn!=null && ns.has(sn)) return true; }
   return false;
 }
+function arrivalFree(tr,n,dest){ const s=nodeSite.get(n), bad=new Set(occupiedInto(dest,tr)); if(s && tr.plat>=0) s.ports.forEach(q=>{ if(portOf.get(q).k!==tr.plat) bad.add(ekey(n,q)); });
+  const r=routePath(n,dest,bad); if(!r) return null; for(let i=0;i<r.length-1;i++) if(bad.has(ekey(r[i],r[i+1]))) return null; return r; }
+const ownStart=(tr,q)=>{ if(!q || q.length<2 || tr.plat<0 || !nodeSite.has(q[0])) return true; const po=portOf.get(q[1]); return !!po && po.k===tr.plat; };
 function tryEnter(tr){
   let p=tr.path; const n=p[tr.pi], dest=p[p.length-1];
+  if(tr.pi===0 && isStationNode(n) && nodeSite.has(dest) && dest!==n){ const vias=(tr.vias||[])[tr.stopIdx]||[];
+    if(!vias.length){ const r=arrivalFree(tr,n,dest); if(!r){ const dn=nodeSite.get(dest).name; tr.why=L(`čeká – v ${dn} není volná kolej (postav další kolej nebo výhybku)`,`waiting – no free track at ${dn} (add a track or a switch)`,`wartet – in ${dn} ist kein Gleis frei (Gleis oder Weiche bauen)`); return false; }
+      if(pathLen(r)<=pathLen(p)*1.3+60){ tr.path=p=r; } } }
   if(!edges.has(ekey(n,p[tr.pi+1]))){ const np=routePath(n,dest); if(!np || np.length<2){ tr.why=L('chybí trať','no track','kein Gleis'); return false; } tr.path=p=np; tr.pi=0; }
   const nx=p[tr.pi+1];
   if(entrySig.has(n)){ let j=tr.pi+1; while(j<p.length-1 && portOf.has(p[j]) && portOf.has(p[j+1])) j++; const po=portOf.get(p[j]); if(po && p[j+1]===po.s.node){ const platBusy=(k,pt)=>trainsAt(po.s.node).some(o=>o!==tr && o.plat===k) || trains.some(o=>{ if(o===tr || o.st!=='run' || !o.path || o.path[o.path.length-2]!==pt) return false; const iN=o.path.indexOf(n); return iN>=0 && iN<o.pi; });
@@ -1190,21 +1199,22 @@ function tryEnter(tr){
       if(busy){ tr.why=L(`čeká před ${po.s.name} na volnou kolej`,`waiting outside ${po.s.name} for its track`,`wartet vor ${po.s.name} auf sein Gleis`); return false; } } }
   if(nx===dest && stationFull(dest,tr)){ { const sn=nodeSite.get(dest).name; tr.why=L(`čeká před stanicí ${sn}, koleje jsou obsazené`,`waiting outside ${sn}, all tracks taken`,`wartet vor ${sn}, alle Gleise belegt`); } return false; }
   // a station exit leading into a signalled section has a departure signal
-  if(signals.has(n) || (isStationNode(n) && signals.has(blockFrom(p,tr.pi).end))){
+  if(signals.has(n) || isStationNode(n)){
     // like a dispatcher: if a train is coming the other way on our track, take the other track of a passing loop
     const opp=opposingEdges(tr,p,tr.pi);
     if(opp.size){ const alt=routePath(n,dest,opp,tr.pi>0?p[tr.pi-1]:null);
       const oc=q=>{ let c=0; for(let i=0;i<q.length-1;i++) if(opp.has(ekey(q[i],q[i+1]))) c++; return c; };
-      if(alt && alt.length>1 && pathLen(alt)<=pathLen(p.slice(tr.pi))*1.3+60 && oc(alt)<oc(p.slice(tr.pi))){ tr.path=p=alt; tr.pi=0; } }
+      if(alt && alt.length>1 && ownStart(tr,alt) && pathLen(alt)<=pathLen(p.slice(tr.pi))*1.3+60 && oc(alt)<oc(p.slice(tr.pi))){ tr.path=p=alt; tr.pi=0; } }
     let blk=blockFrom(p,tr.pi);
     if(blockBusy(blk,tr)){
       const busy=new Set(); for(const [k,v] of occ) if(v!==tr.id) busy.add(k); for(const o of trains) if(o!==tr && o.st==='run'){ const k=curEdge(o); if(k) busy.add(k); }
-      let alt=routePath(n,dest,busy,tr.pi>0?p[tr.pi-1]:null); if(alt && pathLen(alt)>pathLen(p.slice(tr.pi))*1.25+40) alt=null;   // only a real shortcut around the busy track, never circling
+      let alt=routePath(n,dest,busy,tr.pi>0?p[tr.pi-1]:null); if(alt && (pathLen(alt)>pathLen(p.slice(tr.pi))*1.25+40 || !ownStart(tr,alt))) alt=null;   // only a real shortcut around the busy track, never circling
       if(alt && alt.length>1){ const ab=blockFrom(alt,0); if(!blockBusy(ab,tr)){ tr.path=p=alt; tr.pi=0; blk=ab; } else { tr.why=L('stojí u návěstidla','held at a signal','hält am Signal'); return false; } }
       else { tr.why=L('stojí u návěstidla','held at a signal','hält am Signal'); return false; }
     }
     blk.edges.forEach(k=>occ.set(k,tr.id));
   }
+  if(tr.pi===0 && isStationNode(n)) tr.plat=-1;
   const B=nodes[p[tr.pi+1]], A=nodes[n]; tr.ang=Math.atan2(B.y-A.y,B.x-A.x); tr.why=''; return true;
 }
 const trainLen = o => 12.6+o.consist.length*11.6;
@@ -1363,7 +1373,7 @@ function splitEdge(k,x,y,act){ const e=edges.get(k), n=addNode(x,y), f=dist(e.a,
 function pickTarget(w){
   const s=siteAt(w.x,w.y,Math.max(55,36*worldPerPx())); if(s){ const c=nodes[s.node], dx=w.x-c.x, dy=w.y-c.y, lx=dx*s.ax[0]+dy*s.ax[1], ly=-dx*s.ax[1]+dy*s.ax[0], half=(s.plat-1)/2*PLAT_GAP;
     // tapped right on the platforms: join that track
-    const k = (s.plat>1 && Math.abs(lx)<s.plen/2+6 && Math.abs(ly)<half+9) ? Math.max(0,Math.min(s.plat-1,Math.round((ly+half)/PLAT_GAP))) : null;
+    const k = (s.plat>1 && Math.abs(ly)<half+9) ? Math.max(0,Math.min(s.plat-1,Math.round((ly+half)/PLAT_GAP))) : null;
     const d = Math.abs(lx)>s.plen/2-18 ? (lx>0?1:0) : null;   // tapped near one end: build from that end (in front of the end = switches to all tracks)
     return {kind:'station',s,k,d}; }
   const r=Math.max(14,22*worldPerPx());
@@ -1381,12 +1391,12 @@ function edgeDir(P,want){ const e=edges.get(P.k); if(!e) return null; const d=un
 // Waypoints for a new line: a smooth curve that leaves a station straight along its tracks and joins existing track tangentially.
 function planBuildWith(A,B,sp0,ep0,kf){
   const tgt=targetPos(B); let S, sDir=null;
-  if(A.kind==='station'){ const c=nodes[A.s.node], ax=A.s.ax, east= sp0!=null ? sp0===1 : (tgt.x-c.x)*ax[0]+(tgt.y-c.y)*ax[1]>=0; S={id:portFor(A.s,east?1:0,A.k,tgt), fan:A.k==null}; sDir=east?[ax[0],ax[1]]:[-ax[0],-ax[1]]; }
+  if(A.kind==='station'){ const c=nodes[A.s.node], ax=A.s.ax, east= sp0!=null ? sp0===1 : (tgt.x-c.x)*ax[0]+(tgt.y-c.y)*ax[1]>=0; S={id:portFor(A.s,east?1:0,A.k,tgt)}; sDir=east?[ax[0],ax[1]]:[-ax[0],-ax[1]]; }
   else if(A.kind==='node'){ S={id:A.id}; const n=nodes[A.id]; sDir=bestDir(contDirs(A.id),unit(n.x,n.y,tgt.x,tgt.y)); }
   else if(A.kind==='edge'){ S={edge:A}; sDir=edgeDir(A,unit(A.x,A.y,tgt.x,tgt.y)); }
   else S={x:A.x,y:A.y};
   const sp=ptPos(S); let E, eDir=null;
-  if(B.kind==='station'){ const c=nodes[B.s.node], ax=B.s.ax, east= ep0!=null ? ep0===1 : (sp.x-c.x)*ax[0]+(sp.y-c.y)*ax[1]>=0; E={id:portFor(B.s,east?1:0,B.k,sp), fan:B.k==null}; eDir=east?[-ax[0],-ax[1]]:[ax[0],ax[1]]; }
+  if(B.kind==='station'){ const c=nodes[B.s.node], ax=B.s.ax, east= ep0!=null ? ep0===1 : (sp.x-c.x)*ax[0]+(sp.y-c.y)*ax[1]>=0; E={id:portFor(B.s,east?1:0,B.k,sp)}; eDir=east?[-ax[0],-ax[1]]:[ax[0],ax[1]]; }
   else if(B.kind==='node'){ E={id:B.id}; const n=nodes[B.id]; eDir=bestDir(arriveDirs(B.id),unit(sp.x,sp.y,n.x,n.y)); }
   else if(B.kind==='edge'){ E={edge:B}; eDir=edgeDir(B,unit(sp.x,sp.y,B.x,B.y)); }
   else E={x:B.x,y:B.y};
@@ -2130,9 +2140,9 @@ const HINTS={
   route:()=>L('Klepej na stanice v pořadí, kudy má vlak jet. Klepnutím na kolej mezi stanicemi (třeba druhou kolej výhybny) určíš, kudy má vlak projet. Klepnutím přímo na kolej ve stanici zvolíš, na kterou kolej vlak přijede – na okruhu tak může jet jinudy tam a jinudy zpět. Světle modrá je právě přidaná cesta, tmavě modrá zbytek trasy a cesta zpátky na start. Pak dej Hotovo a vyber vozy.',
     'Tap the stations in the order the train should visit them. Tap a track between stations (for example the second track of a passing loop) to send the train that way. Tap a platform track to choose which track the train arrives on – on a loop it can go one way and come back the other. Light blue is the leg you just added, dark blue the rest of the route and the way back to the start. Then tap Done and pick wagons.',
     'Tippe die Bahnhöfe in der Reihenfolge an, die der Zug fahren soll. Tippe auf ein Gleis zwischen den Bahnhöfen (z. B. das zweite Gleis einer Ausweiche), damit der Zug dort entlangfährt. Tippe auf ein Bahnsteiggleis, um das Ankunftsgleis zu wählen – auf einem Ring fährt der Zug so hin und zurück auf verschiedenen Wegen. Hellblau ist der neue Abschnitt, dunkelblau der Rest und der Rückweg zum Start. Dann auf Fertig tippen und Wagen wählen.'),
-  track:()=>L('Klepni na stanici nebo kolej a pak na cíl, nebo táhni prstem od startu k cíli – trať se postaví v plynulém oblouku, až prst zvedneš. Klepneš-li na konkrétní kolej ve stanici, napojí se jen na ni. Klepneš-li před konec nástupišť, dostane trať výhybky na všechny koleje. Kilometr stojí 75 mincí, v tunelu 150. Na počítači: klikni na start a na cíl, tažením myší posouváš mapu, dvojklikem přibližuješ.',
-    'Tap a station or track, then the destination, or drag from start to destination – the line is built as a smooth curve when you lift your finger. Tap one platform track to join only that track; tap just past the platform ends to get switches to all tracks. A kilometre costs 75 coins, 150 in a tunnel. On a computer: click the start and the destination, drag the mouse to move the map, double-click to zoom in.',
-    'Tippe auf einen Bahnhof oder ein Gleis und dann aufs Ziel, oder ziehe vom Start zum Ziel – die Strecke wird als sanfter Bogen gebaut, wenn du loslässt. Tippe auf ein Bahnsteiggleis, um nur dort anzuschließen; tippe kurz hinter das Bahnsteigende für Weichen zu allen Gleisen. Ein Kilometer kostet 75 Münzen, im Tunnel 150. Am Computer: Start und Ziel anklicken, mit gedrückter Maus verschieben, Doppelklick zoomt hinein.'),
+  track:()=>L('Klepni na stanici nebo kolej a pak na cíl, nebo táhni prstem od startu k cíli – trať se postaví v plynulém oblouku, až prst zvedneš. Trať se vždy napojí jen na jednu kolej ve stanici – na tu, na kterou nebo před kterou klepneš. Výhybku uděláš jen ty: začni novou trať na existující koleji. Kilometr stojí 75 mincí, v tunelu 150. Na počítači: klikni na start a na cíl, tažením myší posouváš mapu, dvojklikem přibližuješ.',
+    'Tap a station or track, then the destination, or drag from start to destination – the line is built as a smooth curve when you lift your finger. A line always joins just one platform track – the one you tap on or in front of. Switches appear only where you start a new line on an existing track. A kilometre costs 75 coins, 150 in a tunnel. On a computer: click the start and the destination, drag the mouse to move the map, double-click to zoom in.',
+    'Tippe auf einen Bahnhof oder ein Gleis und dann aufs Ziel, oder ziehe vom Start zum Ziel – die Strecke wird als sanfter Bogen gebaut, wenn du loslässt. Eine Strecke schließt immer nur an ein Bahnsteiggleis an – das, auf oder vor das du tippst. Weichen entstehen nur, wo du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Kilometer kostet 75 Münzen, im Tunnel 150. Am Computer: Start und Ziel anklicken, mit gedrückter Maus verschieben, Doppelklick zoomt hinein.'),
   signal:()=>L('Návěstidlo kryje úsek (oddíl) až k dalšímu návěstidlu nebo stanici. Když je oddíl obsazený, ukazuje stůj a vlak počká. Každá odbočka dostane výhybku a návěstidla sama, před stanicí stojí vjezdové návěstidlo. Na jednokolejce postav výhybnu (krátkou druhou kolej) – vlaky se v ní vyhnou. 600 mincí.',
     'A signal protects the section up to the next signal or station. If the section is occupied, the train waits. Every junction gets a switch and signals automatically. A train leaving a station waits if the section ahead is taken. 600 coins.',
     'Ein Signal sichert den Abschnitt bis zum nächsten Signal oder Bahnhof. Ist er belegt, wartet der Zug. Jede Abzweigung bekommt automatisch eine Weiche und Signale. Ein Zug im Bahnhof wartet, wenn der Abschnitt dahinter belegt ist. 600 Münzen.'),
@@ -2527,8 +2537,7 @@ function loadState(st){
   money=st.money; score=st.score||0; built=st.built||0; deliveries=st.deliveries||0; crashes=st.crashes||0; won=!!st.won; gameMin=st.gameMin||360; goalHit=!!st.goalHit; incomeLog=st.incomeLog||[]; curRate=-1;
   for(const [x,y] of st.nodes||[]) addNode(x,y);
   for(const [a,b,c] of st.edges||[]) if(nodes[a]&&nodes[b]) addEdge(a,b,c);
-  if(st.fan) st.fan.forEach(p=>fanPorts.add(p)); else for(const p of portOf.keys()) if([...(adj.get(p)||[])].some(x=>!edges.get(ekey(p,x)).internal)) fanPorts.add(p);
-  for(const s of st.signals||[]) if(nodes[s]) signals.add(s); for(const s of st.entry||[]) if(nodes[s]) entrySig.add(s);
+    for(const s of st.signals||[]) if(nodes[s]) signals.add(s); for(const s of st.entry||[]) if(nodes[s]) entrySig.add(s);
   for(const x of st.sites||[]){ const s=site(x.id); if(!s) continue; Object.assign(s.stock,x.stock||{}); Object.assign(s.inbuf,x.inbuf||{}); s.tm=x.tm||{}; if(s.levels){ s.lvl=x.lvl||0; s.log=x.log||[]; s.since=x.since||0; s.best=x.best||0; s.got={}; s.done=!!x.done; } }
   for(const t of st.trains||[]) if(t.route.every(id=>site(id))) makeTrain(t);
   nextId=Math.max(nextId,st.nextId||1);
