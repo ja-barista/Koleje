@@ -1,0 +1,17 @@
+{
+  "name": "Železniční inženýr",
+  "short_name": "Žel. inženýr",
+  "description": "Postav železnici napříč Českem a dovez městům, co potřebují.",
+  "lang": "cs",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#a8e0ff",
+  "theme_color": "#7cc9f5",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
