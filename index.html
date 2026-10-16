@@ -350,6 +350,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
       <button role="tab" id="tabPlans" aria-selected="false" data-i18n="tabPlans">Řády</button>
       <button role="tab" id="tabLevels" aria-selected="false" data-i18n="tabLevels">Levely</button>
     </div>
+    <button class="speed" id="sndBtn" aria-label="Zvuk">🔊</button>
     <button class="speed" id="speed" aria-label="Rychlost hry">1×</button>
   </div>
 
@@ -1018,6 +1019,7 @@ const EXPORT_BONUS=1.3;
 const payAt = (s,c,km) => s.exports && s.exports.includes(c) ? Math.round(payFor(c,km)*EXPORT_BONUS/10)*10 : payFor(c,km);
 let exported=0;
 function deliver(tr,s,l){
+  { const nn=nodes[s.node]; sndCoin(nn.x,nn.y); }
   const pay=payAt(s,l.c,l.km||0); tr.earned=(tr.earned||0)+pay;
   if(s.exports && s.exports.includes(l.c)){ exported++; takeOff(); } deliveries++; logIncome(pay);
   setMoney(money+pay,true); addScore(10);
@@ -1026,7 +1028,7 @@ function deliver(tr,s,l){
   if(s.levels && levelWants(s,l.c)){ s.log.push([gameMin,l.c]); evalLevel(s); }
   renderNeeds();
 }
-function levelUp(c){
+function levelUp(c){ sndFanfare();
   const need=c.levels[c.lvl], first=c.lvl>=c.best, bonus=first?5000*(c.lvl+1):0;
   c.since=gameMin; c.best=Math.max(c.best,c.lvl+1); if(bonus){ setMoney(money+bonus,true); addScore(100*(c.lvl+1)); }
   if(c.lvl>=c.levels.length-1){ c.done=true;
@@ -1150,6 +1152,7 @@ function depart(tr){
   const A=NP(path,0), B=NP(path,1), [ux,uy]=unit(A.x,A.y,B.x,B.y);
   tr.trail=[]; for(let d=0; d<=130; d+=2) tr.trail.push({x:A.x-ux*d, y:A.y-uy*d});
   tr.ang=Math.atan2(uy,ux);
+  tr._sq=false; { const m=tr.parts&&tr.parts[0]; if(m) sndHorn(m.position.x+CX,m.position.z+CZ,Math.random()<0.5); }
   if(tryEnter(tr)) tr.st='run'; else { tr.st='hold'; tr.check=1; }
 }
 function blockFrom(p,i){ const es=[], ns=[]; let j=i;
@@ -1209,6 +1212,7 @@ function gapAhead(tr){ const p=tr.path, a=p[tr.pi], b=p[tr.pi+1], c=p[tr.pi+2], 
   return best; }
 function move(tr,dt){
   let p=tr.path, a=p[tr.pi], b=p[tr.pi+1], L=segLen(p,tr.pi);
+  if(!tr._sq && tr.pi>=p.length-4){ let d=Math.max(0,L-tr.t); for(let i=tr.pi+1;i<p.length-1;i++) d+=segLen(p,i); if(d<70){ tr._sq=true; const q=pos(tr); sndSqueal(q.x,q.y); } }
   { const g=gapAhead(tr); if(g<12){ tr.why=tx(['jede za vlakem před sebou','following the train ahead','folgt dem Zug davor']); return; } tr.t+=Math.min(SPEED*dt, Math.max(0,g-10)); }
   for(const o of trains){ if(o===tr||o.st!=='run'||!o.path) continue; if(o.path[o.pi]===b && o.path[o.pi+1]===a && tr.t+o.t>=L){ crash(tr,o); return; } }
   while(tr.t>=L){
@@ -1263,7 +1267,7 @@ function endPhase(tr){
 function crash(a,b){
   const p=pos(a), names=a.name+' + '+b.name;
   for(const tr of [a,b]){ tr.st='dead'; releaseTrain(tr); removeTrainMesh(tr); }
-  trains=trains.filter(t=>t!==a && t!==b); crashes++; addScore(-50); boom(p.x,p.y); setTimeout(()=>boom(p.x+6,p.y-4),180); setTimeout(()=>boom(p.x-5,p.y+5),360);
+  trains=trains.filter(t=>t!==a && t!==b); crashes++; addScore(-50); boom(p.x,p.y); sndBoom(p.x,p.y); setTimeout(()=>boom(p.x+6,p.y-4),180); setTimeout(()=>boom(p.x-5,p.y+5),360);
   if(cardTrain===a||cardTrain===b) hideTrainCard(); netVer++;
   toast(L(`Srážka! ${names} explodovaly a soupravy jsou ztracené.`,`Crash! ${names} exploded and both trains are lost.`,`Unfall! ${names} sind explodiert, beide Züge sind verloren.`),'bad',5200); dirty();
 }
@@ -1425,13 +1429,20 @@ function buildPoints(pts,act){
   const ids=pts.map(p=> p.id!=null ? p.id : (p.edge ? (edges.has(p.edge.k) ? splitEdge(p.edge.k,p.edge.x,p.edge.y,act) : addNode(p.edge.x,p.edge.y)) : addNode(p.x,p.y)));
   let spent=0; for(let i=0;i<ids.length-1;i++) spent+=addSegment(ids[i],ids[i+1],act);
   if(fly){ spent+=fly*FLY_COST; toast(L(`Trať přejede ${fly}× jinou trať po mostě (${fmtK(fly*FLY_COST)}).`,`The line crosses another line ${fly}× on a bridge (${fmtK(fly*FLY_COST)}).`,`Die Strecke überquert ${fly}× eine andere auf einer Brücke (${fmtK(fly*FLY_COST)}).`),'good'); }
+  if(spent) sndBuild();
   setMoney(money-spent); act.amount+=spent; autoJunctions(act); addEntrySignals(act); rebuildTracks();
   if(tunnel) toast(L('Trať vede tunelem pod horami. Kilometr v tunelu stojí 150 mincí.','The line runs through a tunnel under the mountains. A tunnel kilometre costs 150 coins.','Die Strecke führt durch einen Tunnel. Ein Tunnelkilometer kostet 150 Münzen.'));
   return ids[ids.length-1];
 }
 function segDist(px,py,a,b){ const dx=b.x-a.x, dy=b.y-a.y; let t=((px-a.x)*dx+(py-a.y)*dy)/(dx*dx+dy*dy); t=Math.max(0,Math.min(1,t)); return Math.hypot(a.x+dx*t-px, a.y+dy*t-py); }
 function nearestEdge(wx,wy,maxD){ let best=null, bd=maxD; for(const [k,e] of edges){ if(e.internal) continue; const d=segDist(wx,wy,nodes[e.a],nodes[e.b]); if(d<bd){bd=d;best=k;} } return best; }
-function siteAt(wx,wy,maxD){ let best=null, bd=maxD; for(const s of SITES){ const n=nodes[s.node]; const d=Math.hypot(n.x-wx,n.y-wy); if(d<bd){bd=d;best=s;} } return best; }
+// a station is hit anywhere on its platforms and a bit past both ends, not only in its middle
+function siteAt(wx,wy,maxD){ let best=null, bd=Infinity; const m=Math.max(10,(maxD||40)*0.35);
+  for(const s of SITES){ const n=nodes[s.node], dx=wx-n.x, dy=wy-n.y, lx=dx*s.ax[0]+dy*s.ax[1], ly=-dx*s.ax[1]+dy*s.ax[0], half=(s.plat-1)/2*PLAT_GAP;
+    const ox=Math.max(0,Math.abs(lx)-(s.plen/2+22)), oy=Math.max(0,Math.abs(ly)-(half+14)), d=Math.hypot(ox,oy);
+    if(d<=m && d+Math.hypot(dx,dy)*0.001<bd){ bd=d+Math.hypot(dx,dy)*0.001; best=s; } }
+  if(best) return best;
+  for(const s of SITES){ const n=nodes[s.node]; const d=Math.hypot(n.x-wx,n.y-wy); if(d<maxD && d<bd){bd=d;best=s;} } return best; }
 const EH=120; let edgeHash=new Map();
 function buildEdgeHash(){ edgeHash=new Map(); for(const e of edges.values()){ const A=nodes[e.a],B=nodes[e.b];
   for(let cx=Math.floor(Math.min(A.x,B.x)/EH); cx<=Math.floor(Math.max(A.x,B.x)/EH); cx++) for(let cy=Math.floor(Math.min(A.y,B.y)/EH); cy<=Math.floor(Math.max(A.y,B.y)/EH); cy++){ const k=cx+','+cy; if(!edgeHash.has(k)) edgeHash.set(k,[]); edgeHash.get(k).push(e); } } }
@@ -1591,7 +1602,7 @@ function tank(g,x,z,r,h,col){ g.add(mesh(cyl,mat(col||'#e4e8ec'),x,h/2,z,r,h,r))
 function hall(g,x,z,w,d,h,col,roofCol,saw){ const v={key:'hall'+col,base:col,win:'#cfe6f5',frame:'#ffffff',roof:roofCol||'#8a96a3'}; const b=building(x,z,w,d,h,v,'flat'); g.add(b);
   if(saw){ for(let i=0;i<Math.floor(w/7);i++){ const r=mesh(box,mat(roofCol),x-w/2+3.5+i*7,h+1.8,z,6.4,3.4,d-1); r.rotation.z=0.45; g.add(r); } } return b; }
 let plane=null, planeT=-1;
-function takeOff(){ if(plane && planeT<0) planeT=0; }
+function takeOff(){ if(plane && planeT<0){ planeT=0; const a=site('letiste'), n=nodes[a.node]; sndJet(n.x,n.y); } }
 function planeTick(dt){ if(!plane || planeT<0) return; planeT+=dt; const t=planeT;
   const x = t<3 ? -60+ (t*t)*9 : 21+ (t-3)*60, y = t<3 ? 3 : 3+(t-3)*(t-3)*9; plane.position.set(x,y,plane.userData.z); plane.rotation.z = t<3?0:Math.min(0.35,(t-3)*0.25);
   if(t>9){ planeT=-1; plane.position.set(-60,3,plane.userData.z); plane.rotation.z=0; } }
@@ -2119,6 +2130,7 @@ const HINTS={
 };
 function setTool(t){ tool=t; if(t!=='track') anchor=null; if(t==='route') openRoutePlanner(); else closeRoutePlanner(); document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t))); $('hint').textContent=HINTS[t](); if(dotsMesh) dotsMesh.visible=t==='track'||t==='signal'; }
 document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$('sndBtn').onclick=()=>{ SND.on=!SND.on; try{ localStorage.setItem('zi-sound',SND.on?'1':'0'); }catch(e){} sndInit(); if(SND.master) SND.master.gain.setTargetAtTime(SND.on?0.9:0,SND.ctx.currentTime,0.05); sndBtnPaint(); };
 $('speed').onclick=e=>{ speedIdx=(speedIdx+1)%SPEEDS.length; e.currentTarget.textContent=SPEED_LABEL[speedIdx]; };
 
 function goalCard(){ const r=Math.max(0,curRate), cd=citiesDone(), n=consumers.length;
@@ -2580,7 +2592,7 @@ $('playerBtn').onclick=()=>{
 function applyStatic(){
   document.documentElement.lang=LANG;
   document.querySelectorAll('[data-i18n]').forEach(el=>{ const v=STATIC_TEXT[el.dataset.i18n]; if(v) el.textContent=L(...v); });
-  const aria={rotL:['Otočit pohled doleva','Turn view left','Ansicht nach links drehen'],rotR:['Otočit pohled doprava','Turn view right','Ansicht nach rechts drehen'],compass:['Sever nahoru','North up','Norden nach oben'],speed:['Rychlost hry','Game speed','Spieltempo'],zin:['Přiblížit','Zoom in','Hineinzoomen'],zout:['Oddálit','Zoom out','Herauszoomen'],undoBtn:['Vrátit poslední krok','Undo last step','Letzten Schritt zurücknehmen'],playerBtn:['Hráč a ukládání','Player and saving','Spieler und Speichern'],cv:['3D mapa České republiky s tratěmi','3D map of Czechia with railway lines','3D-Karte Tschechiens mit Strecken']};
+  const aria={sndBtn:['Zvuk zapnout nebo vypnout','Sound on or off','Ton an oder aus'],rotL:['Otočit pohled doleva','Turn view left','Ansicht nach links drehen'],rotR:['Otočit pohled doprava','Turn view right','Ansicht nach rechts drehen'],compass:['Sever nahoru','North up','Norden nach oben'],speed:['Rychlost hry','Game speed','Spieltempo'],zin:['Přiblížit','Zoom in','Hineinzoomen'],zout:['Oddálit','Zoom out','Herauszoomen'],undoBtn:['Vrátit poslední krok','Undo last step','Letzten Schritt zurücknehmen'],playerBtn:['Hráč a ukládání','Player and saving','Spieler und Speichern'],cv:['3D mapa České republiky s tratěmi','3D map of Czechia with railway lines','3D-Karte Tschechiens mit Strecken']};
   for(const id in aria){ const el=$(id); if(el) el.setAttribute('aria-label',L(...aria[id])); }
 }
 function setLang(l){
@@ -2594,6 +2606,100 @@ function resetGame(){ clearWorld(); consumers.forEach(refreshLabel); setMoney(mo
 /* ================= loop ================= */
 let last=performance.now();
 const v3=new T.Vector3();
+/* ================= sound: everything is synthesised, nothing to download ================= */
+// The listener is the point the camera looks at. Zoomed out you hear a quiet mix of everything,
+// zoom in on a city, a train or the Škoda works and that sound comes up.
+const SND={ ctx:null, on:true, voices:[], trainV:[], ready:false };
+try{ SND.on = localStorage.getItem('zi-sound')!=='0'; }catch(e){}
+function sndBtnPaint(){ const b=$('sndBtn'); if(b){ b.textContent=SND.on?'🔊':'🔇'; b.setAttribute('aria-pressed',String(SND.on)); } }
+function noiseBuf(ctx,kind){ const n=ctx.sampleRate*3, b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0); let last=0, b0=0,b1=0,b2=0;
+  for(let i=0;i<n;i++){ const w=Math.random()*2-1;
+    if(kind==='brown'){ last=(last+0.02*w)/1.02; d[i]=last*3.5; }
+    else if(kind==='pink'){ b0=0.99765*b0+w*0.099; b1=0.963*b1+w*0.2965; b2=0.57*b2+w*1.0526; d[i]=(b0+b1+b2+w*0.1848)*0.11; }
+    else d[i]=w; }
+  return b; }
+function loopSrc(buf){ const s=SND.ctx.createBufferSource(); s.buffer=buf; s.loop=true; s.loopStart=Math.random(); s.start(0,Math.random()*2); return s; }
+function sndInit(){
+  if(SND.ctx){ if(SND.ctx.state==='suspended') SND.ctx.resume(); return; }
+  const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+  const ctx=SND.ctx=new AC(); SND.master=ctx.createGain(); SND.master.gain.value=SND.on?0.9:0;
+  const comp=ctx.createDynamicsCompressor(); SND.master.connect(comp); comp.connect(ctx.destination);
+  SND.white=noiseBuf(ctx,'white'); SND.brown=noiseBuf(ctx,'brown'); SND.pink=noiseBuf(ctx,'pink');
+  // wind over the countryside, always there, louder when zoomed out
+  { const s=loopSrc(SND.pink), f=ctx.createBiquadFilter(), g=ctx.createGain(); f.type='lowpass'; f.frequency.value=700; g.gain.value=0; s.connect(f); f.connect(g); g.connect(SND.master); SND.wind=g; }
+  // one looping voice per place: city traffic, factory machines, airport
+  for(const s of SITES){ const n=nodes[s.node], v={x:n.x,y:n.y,site:s,parts:[]};
+    const out=ctx.createGain(); out.gain.value=0; const pan=ctx.createStereoPanner?ctx.createStereoPanner():null; if(pan){ out.connect(pan); pan.connect(SND.master); } else out.connect(SND.master); v.out=out; v.pan=pan;
+    if(s.kind==='city'){ const src=loopSrc(SND.brown), f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=480; src.connect(f); f.connect(out);
+      const hiss=loopSrc(SND.pink), f2=ctx.createBiquadFilter(), g2=ctx.createGain(); f2.type='bandpass'; f2.frequency.value=1300; f2.Q.value=0.6; g2.gain.value=0.25; hiss.connect(f2); f2.connect(g2); g2.connect(out);
+      v.base = s.id==='praha'?0.55 : s.tourist?0.28 : 0.42; v.kind='city'; }
+    else if(s.kind==='airport'){ const src=loopSrc(SND.pink), f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=900; f.Q.value=0.4; src.connect(f); f.connect(out); v.base=0.22; v.kind='airport'; }
+    else if(s.makes || s.kind==='factory'){ const o=ctx.createOscillator(), og=ctx.createGain(); o.type='sawtooth'; o.frequency.value=s.id==='trinec'?42:58; og.gain.value=0.08; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=260; o.connect(f); f.connect(og); og.connect(out); o.start();
+      const src=loopSrc(SND.brown), f2=ctx.createBiquadFilter(); f2.type='lowpass'; f2.frequency.value=300; src.connect(f2); f2.connect(out); v.base=s.id==='mb'?0.4:0.3; v.kind='factory'; }
+    else { const src=loopSrc(SND.pink), f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; src.connect(f); f.connect(out); v.base=0.08; v.kind='field'; }
+    SND.voices.push(v); }
+  // four train voices, given to the trains closest to the listener
+  for(let i=0;i<4;i++){ const out=ctx.createGain(); out.gain.value=0; const pan=ctx.createStereoPanner?ctx.createStereoPanner():null; if(pan){ out.connect(pan); pan.connect(SND.master); } else out.connect(SND.master);
+    const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=70; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=420; const og=ctx.createGain(); og.gain.value=0.35; o.connect(f); f.connect(og); og.connect(out); o.start();
+    const o2=ctx.createOscillator(); o2.type='square'; o2.frequency.value=140; const f2=ctx.createBiquadFilter(); f2.type='lowpass'; f2.frequency.value=300; const g2=ctx.createGain(); g2.gain.value=0.06; o2.connect(f2); f2.connect(g2); g2.connect(out); o2.start();
+    const rumble=loopSrc(SND.brown), rf=ctx.createBiquadFilter(), rg=ctx.createGain(); rf.type='lowpass'; rf.frequency.value=220; rg.gain.value=0.8; rumble.connect(rf); rf.connect(rg); rg.connect(out);
+    SND.trainV.push({out,pan,o,o2,rg,tr:null,clk:0}); }
+  SND.ready=true; }
+['pointerdown','keydown','touchstart'].forEach(ev=>window.addEventListener(ev,sndInit,{passive:true}));
+sndBtnPaint();
+// how loud something at (x,y) is for the listener, and where it sits left/right
+function hearing(x,y){ const lx=target.x+CX, ly=target.z+CZ, d=Math.hypot(x-lx,y-ly), R=50+camD*0.45, zf=Math.max(0.12,Math.min(1,1.15-Math.log(camD/110)/Math.log(28)));
+  const att=1/(1+(d/R)*(d/R)); let pan=0; if(SND.ctx){ _pv.set(x-CX,0,y-CZ).project(camera); pan=Math.max(-1,Math.min(1,_pv.x)); }
+  return {g:att*zf, pan, att, zf}; }
+function setG(param,v){ if(SND.ctx) param.setTargetAtTime(v,SND.ctx.currentTime,0.15); }
+function sndUpdate(){ if(!SND.ready) return; const ctx=SND.ctx;
+  const zf=Math.max(0.12,Math.min(1,1.15-Math.log(camD/110)/Math.log(28))); setG(SND.wind.gain, 0.05+0.07*(1-zf));
+  for(const v of SND.voices){ const h=hearing(v.x,v.y); let g=v.base*h.g; if(v.kind==='city' && daylight()<0.3) g*=0.45; if(v.kind==='airport' && planeT>=0) g*=3.2;
+    setG(v.out.gain, g); if(v.pan) setG(v.pan.pan, h.pan*0.8); v.h=h.g; }
+  // trains: pick the most audible ones
+  const ranked=trains.filter(t=>t.parts && t.st!=='dead').map(t=>{ const m=t.parts[0].position; const h=hearing(m.x+CX,m.z+CZ); return {t,h}; }).sort((a,b)=>b.h.g-a.h.g).slice(0,SND.trainV.length);
+  SND.trainV.forEach((tv,i)=>{ const r=ranked[i]; if(!r || r.h.g<0.004){ setG(tv.out.gain,0); tv.tr=null; return; }
+    const t=r.t, moving=t.st==='run', sp=SPEEDS[speedIdx]?1:0; tv.tr=t;
+    setG(tv.out.gain, r.h.g*(moving?0.32:0.12)*(sp?1:0.3)); if(tv.pan) setG(tv.pan.pan, r.h.pan*0.8);
+    setG(tv.o.frequency, moving?78+Math.min(3,SPEEDS[speedIdx])*6:52); setG(tv.o2.frequency, moving?156:104); setG(tv.rg.gain, moving?0.9:0.15);
+    // wheels over rail joints: ta-dam ... ta-dam
+    if(moving && sp){ tv.clk-=0.1*Math.min(4,SPEEDS[speedIdx]); if(tv.clk<=0){ tv.clk=0.9; clack(tv.out,0); clack(tv.out,0.13); } } }); }
+setInterval(sndUpdate,100);
+// --- one-shot sounds ---
+function envGain(at,peak,a,d){ const g=SND.ctx.createGain(), t=SND.ctx.currentTime+at; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d); return g; }
+function clack(out,at){ if(!SND.ready) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.white; const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=1700; f.Q.value=2; const g=envGain(at,0.9,0.003,0.07); s.connect(f); f.connect(g); g.connect(out); s.start(ctx.currentTime+at,Math.random()*2,0.12); }
+function placed(x,y,mult){ if(!SND.ready || !SND.on) return null; const h=hearing(x,y), g=h.g*(mult||1); if(g<0.01) return null; const ctx=SND.ctx, out=ctx.createGain(); out.gain.value=g;
+  if(ctx.createStereoPanner){ const p=ctx.createStereoPanner(); p.pan.value=h.pan*0.8; out.connect(p); p.connect(SND.master); } else out.connect(SND.master); setTimeout(()=>{ try{ out.disconnect(); }catch(e){} },6000); return out; }
+function sndHorn(x,y,two){ const out=placed(x,y,0.5); if(!out) return; const ctx=SND.ctx;
+  [[0,0.55,370],[two?0.6:-1,0.5,311]].forEach(([at,len,f])=>{ if(at<0) return; for(const m of [1,1.5]){ const o=ctx.createOscillator(); o.type='sawtooth'; o.frequency.value=f*m; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=1800; const g=envGain(at,0.18/m,0.03,len); o.connect(lp); lp.connect(g); g.connect(out); o.start(ctx.currentTime+at); o.stop(ctx.currentTime+at+len+0.1); } }); }
+function sndCarHorn(x,y){ const out=placed(x,y,0.35); if(!out) return; const ctx=SND.ctx, f=380+Math.random()*120, len=0.12+Math.random()*0.35, n=Math.random()<0.4?2:1;
+  for(let k=0;k<n;k++) for(const m of [1,1.26]){ const o=ctx.createOscillator(); o.type='square'; o.frequency.value=f*m; const lp=ctx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=2200; const g=envGain(k*(len+0.08),0.08,0.01,len); o.connect(lp); lp.connect(g); g.connect(out); o.start(ctx.currentTime+k*(len+0.08)); o.stop(ctx.currentTime+k*(len+0.08)+len+0.05); } }
+function sndSqueal(x,y){ const out=placed(x,y,0.45); if(!out) return; const ctx=SND.ctx, o=ctx.createOscillator(), o2=ctx.createOscillator(), lfo=ctx.createOscillator(), lg=ctx.createGain();
+  o.type='sine'; o.frequency.value=3150; o2.type='sine'; o2.frequency.value=4410; lfo.frequency.value=7; lg.gain.value=60; lfo.connect(lg); lg.connect(o.frequency); lg.connect(o2.frequency);
+  const g=envGain(0,0.09,0.25,2.2), g2=envGain(0.3,0.05,0.3,1.6); o.connect(g); o2.connect(g2); g.connect(out); g2.connect(out); [o,o2,lfo].forEach(z=>{ z.start(); z.stop(ctx.currentTime+3); }); }
+function sndWrench(x,y){ const out=placed(x,y,0.6); if(!out) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.white; const f=ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=2400; f.Q.value=3;
+  const am=ctx.createGain(); am.gain.value=0; const lfo=ctx.createOscillator(); lfo.type='square'; lfo.frequency.value=22+Math.random()*8; const lg=ctx.createGain(); lg.gain.value=0.5; lfo.connect(lg); lg.connect(am.gain);
+  const len=0.35+Math.random()*0.7, g=envGain(0,0.5,0.02,len); s.connect(f); f.connect(am); am.connect(g); g.connect(out); s.start(ctx.currentTime,Math.random()*2,len+0.2); lfo.start(); lfo.stop(ctx.currentTime+len+0.2); }
+function sndClank(x,y){ const out=placed(x,y,0.4); if(!out) return; const ctx=SND.ctx; for(const f of [523,1189,2027,3110]){ const o=ctx.createOscillator(); o.type='sine'; o.frequency.value=f*(0.9+Math.random()*0.2); const g=envGain(0,0.08,0.002,0.9*523/f+0.2); o.connect(g); g.connect(out); o.start(); o.stop(ctx.currentTime+1.4); } }
+function sndBird(x,y){ const out=placed(x,y,0.3); if(!out) return; const ctx=SND.ctx, n=2+Math.floor(Math.random()*4), base=2600+Math.random()*1800;
+  for(let k=0;k<n;k++){ const o=ctx.createOscillator(), at=k*0.13, t=ctx.currentTime+at; o.type='sine'; o.frequency.setValueAtTime(base,t); o.frequency.exponentialRampToValueAtTime(base*(1.3+Math.random()*0.4),t+0.07); const g=envGain(at,0.05,0.01,0.08); o.connect(g); g.connect(out); o.start(t); o.stop(t+0.12); } }
+function sndJet(x,y){ const out=placed(x,y,1.2); if(!out) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.pink; const f=ctx.createBiquadFilter(); f.type='lowpass'; const t=ctx.currentTime;
+  f.frequency.setValueAtTime(300,t); f.frequency.exponentialRampToValueAtTime(2600,t+3); f.frequency.exponentialRampToValueAtTime(500,t+7); const g=envGain(0,0.9,1.5,5.5); s.connect(f); f.connect(g); g.connect(out); s.start(t,0,7.5); }
+function sndBoom(x,y){ const out=placed(x,y,2.5) || (SND.ready&&SND.on?placedUI(0.5):null); if(!out) return; const ctx=SND.ctx, s=ctx.createBufferSource(); s.buffer=SND.brown; const f=ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=900; const g=envGain(0,1,0.01,2.4); s.connect(f); f.connect(g); g.connect(out); s.start(ctx.currentTime,Math.random(),2.6); }
+function placedUI(v){ if(!SND.ready || !SND.on) return null; const g=SND.ctx.createGain(); g.gain.value=v; g.connect(SND.master); setTimeout(()=>{ try{ g.disconnect(); }catch(e){} },4000); return g; }
+function sndCoin(x,y){ const out=placed(x,y,0.5) || placedUI(0.05); if(!out) return; const ctx=SND.ctx; [[0,1319],[0.07,1760]].forEach(([at,f])=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=envGain(at,0.25,0.005,0.35); o.connect(g); g.connect(out); o.start(ctx.currentTime+at); o.stop(ctx.currentTime+at+0.5); }); }
+function sndBuild(){ const out=placedUI(0.35); if(!out) return; const ctx=SND.ctx; for(let k=0;k<3;k++){ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=180-k*20; const g=envGain(k*0.09,0.5,0.005,0.12); o.connect(g); g.connect(out); o.start(ctx.currentTime+k*0.09); o.stop(ctx.currentTime+k*0.09+0.2); } }
+function sndFanfare(){ const out=placedUI(0.3); if(!out) return; const ctx=SND.ctx; [523,659,784,1047].forEach((f,k)=>{ const o=ctx.createOscillator(); o.type='triangle'; o.frequency.value=f; const g=envGain(k*0.11,0.3,0.01,0.35); o.connect(g); g.connect(out); o.start(ctx.currentTime+k*0.11); o.stop(ctx.currentTime+k*0.11+0.5); }); }
+// random life: car horns in cities, impact wrenches at Škoda, clanks at the ironworks, birds in the country
+setInterval(()=>{ if(!SND.ready || !SND.on) return;
+  for(const v of SND.voices){ if(!v.h || v.h<0.02) continue; const s=v.site, n=nodes[s.node], jx=n.x+(Math.random()-0.5)*90, jy=n.y+(Math.random()-0.5)*90;
+    if(v.kind==='city' && Math.random()<(s.id==='praha'?0.45:0.25)*(daylight()<0.3?0.3:1)) sndCarHorn(jx,jy);
+    else if(s.id==='mb' && Math.random()<0.6) sndWrench(jx,jy);
+    else if((s.id==='trinec'||s.id==='karvina'||s.id==='ostrava') && Math.random()<0.25) sndClank(jx,jy);
+    else if((v.kind==='field' || s.id==='zatec' || s.id==='mikulov' || s.id==='valtice') && daylight()>0.4 && Math.random()<0.3) sndBird(jx,jy); }
+  if(daylight()>0.4 && Math.random()<0.25){ const lx=target.x+CX+(Math.random()-0.5)*200, ly=target.z+CZ+(Math.random()-0.5)*200; if(!SITES.some(s=>{ const n=nodes[s.node]; return Math.hypot(n.x-lx,n.y-ly)<150 && s.kind==='city'; })) sndBird(lx,ly); }
+},700);
+
 function frame(now){
   const real=Math.min(0.05,(now-last)/1000); last=now;
   const dt=real*SPEEDS[speedIdx]; const n=Math.ceil(dt/0.25); for(let i=0;i<n;i++) step(dt/n);
