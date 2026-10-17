@@ -1089,6 +1089,7 @@ function routePath(from,to,avoid,startPrev){
       if(thrUV && !inThr && p>=0 && !nodeSite.has(p) && !fanPorts.has(u)) continue;          // a line joined to one track has no switches to the others
       if(!thrUV && inThr && !nodeSite.has(v) && !fanPorts.has(u)) continue;
       const sw = portOf.has(u) && p>=0 && (nodeSite.has(p) || throatKeys.has(ekey(p,u)) || throatKeys.has(ekey(u,v))) && v!==p;   // station switches: no turn limit inside the throat
+      if(rev && p>=0 && v!==p){ const a=portOf.get(p), c=portOf.get(v); if(a && c && a.k!==c.k) continue; }
       if(!rev && !sw && (v===p || (p>=0 && !turnOK(p,u,v)))) continue; const kv=u+'>'+v; if(done.has(kv)) continue;
       if(thrOrigin!==null && !throatKeys.has(ekey(u,v))){ const fromPlat=nodeSite.has(thrOrigin); if(fromPlat ? nodeSite.has(v) : !nodeSite.has(v)) continue; }
       const k=ekey(u,v); let w=edges.get(k).len; if(avoid && avoid.has(k)) w+=5000;
@@ -2137,7 +2138,8 @@ cv.addEventListener('pointermove',e=>{
       gesture.moved=true;
       if(tool==='track' && gesture.g){ const T0=pickTarget(gesture.g); if(T0.kind!=='free'){ gesture.from=T0; gesture.act=newAct(); anchor=T0; } } } }
   if(!gesture.moved) return;
-  if(gesture.mouse || tool==='pan' || (tool!=='track')){ panBy(gesture.g,p); return; }
+  // one finger from a station or a track builds; from empty ground it moves the map
+  if(gesture.mouse || tool!=='track' || !gesture.from){ panBy(gesture.g,p); return; }
   if(gesture.from){ const g=groundAt(p.x,p.y); if(g) dragBuild(g); }
 });
 function endPtr(e){ if(!pts.has(e.pointerId)) return; const p=pts.get(e.pointerId); pts.delete(e.pointerId);
@@ -2257,8 +2259,29 @@ function renderRoute(){ routeGroup.clear(); routeZoom=camD; const n=rStops.lengt
     <div class="actions"><button class="btn small" data-rp="done" ${n<2?'disabled':''}>${L('Hotovo – vybrat vozy','Done – pick wagons','Fertig – Wagen wählen')}</button>${n?`<button class="btn small ghost" data-rp="undo">${L('Zpět o zastávku','Remove last stop','Letzten Halt entfernen')}</button>`:''}<button class="btn small ghost" data-rp="list">${L('Moje vlaky','My trains','Meine Züge')}</button><button class="btn small ghost" data-rp="exit">✕</button></div>`; }
 function openRoutePlanner(){ $('routePanel').hidden=false; renderRoute(); }
 function closeRoutePlanner(){ rStops=[]; rPlats=[]; rVias=[]; routeGroup.clear(); $('routePanel').hidden=true; }
+function strictLeg(fromNode,k,vias,toNode,wantK){ const s=nodeSite.get(fromNode), d=nodeSite.get(toNode);
+  const bad=new Set(); if(s && k!=null) s.ports.forEach(q=>{ if(portOf.get(q).k!==k) bad.add(ekey(fromNode,q)); });
+  const badEnd=new Set(); if(d && wantK!=null) d.ports.forEach(q=>{ if(portOf.get(q).k!==wantK) badEnd.add(ekey(toNode,q)); });
+  const targets=[...(vias||[]).filter(v=>nodes[v]&&deg(v)), toNode]; let cur=fromNode, prv=null, full=[fromNode];
+  for(let i=0;i<targets.length;i++){ const av=new Set([...(i===0?bad:[]), ...(i===targets.length-1?badEnd:[])]); const r=routePath(cur,targets[i],av,prv); if(!r) return null;
+    for(let j=0;j<r.length-1;j++) if(av.has(ekey(r[j],r[j+1]))) return null; full=full.concat(r.slice(1)); prv=full.length>1?full[full.length-2]:null; cur=targets[i]; }
+  const q=portOf.get(full[full.length-2]); return {path:full, k:q?q.k:null}; }
+// does the whole route work track by track, including the way back to the start?
+function routeCheck(stops,plats,vias){ const n=stops.length; if(n<2) return {ok:true};
+  const node=i=>site(stops[i%n]).node, want=i=>(plats||[])[i%n]??null, vv=i=>(vias||[])[i%n]||[];
+  const startKs = want(0)!=null ? [want(0)] : [...Array(site(stops[0]).plat).keys()];
+  let lastFail=0;
+  for(const k0 of startKs){ let k=k0, ok=true;
+    for(let i=0;i<n+1;i++){ const r=strictLeg(node(i),k,vv(i),node(i+1),want(i+1)); if(!r){ ok=false; lastFail=Math.max(lastFail,i); break; } k=r.k; }
+    if(ok) return {ok:true}; }
+  return {ok:false, i:lastFail%n}; }
+function legFailMsg(stops,i,plats){ const a=site(stops[i]), b=site(stops[(i+1)%stops.length]), k=(plats||[])[(i+1)%stops.length];
+  return L(`Z ${a.name} se do ${b.name}${k!=null?` na kolej ${k+1}`:''} nedá dojet – koleje na sebe nenavazují. Vlak může ze stanice odjet jen po koleji, na kterou přijel; připoj ji nebo postav výhybku.`,
+    `A train cannot get from ${a.name} to ${b.name}${k!=null?` track ${k+1}`:''} – the tracks do not connect. A train can only leave a station on the track it arrived on; connect it or build a switch.`,
+    `Von ${a.name} kommt man nicht nach ${b.name}${k!=null?` Gleis ${k+1}`:''} – die Gleise sind nicht verbunden. Ein Zug kann nur auf dem Gleis abfahren, auf dem er ankam; schließe es an oder baue eine Weiche.`); }
 function routeAdd(st,k){ const last=rStops[rStops.length-1];
   if(last===st.id){ toast(L('Tahle stanice už je poslední zastávka.','That station is already the last stop.','Dieser Bahnhof ist schon der letzte Halt.')); return; }
+  if(last){ const tryS=[...rStops,st.id], tryP=[...rPlats,k??null], tryV=[...rVias,[]], ch=routeCheck(tryS,tryP,tryV); if(!ch.ok && ch.i<tryS.length-1){ toast(legFailMsg(tryS,ch.i,tryP),'bad',6000); return; } }
   if(last && !routePath(site(last).node,st.node)){ toast(L(`Z ${site(last).name} do ${st.name} zatím nevede trať.`,`There is no track from ${site(last).name} to ${st.name} yet.`,`Von ${site(last).name} nach ${st.name} gibt es noch kein Gleis.`),'bad'); return; }
   rStops.push(st.id); rPlats.push(k??null); rVias.push([]); renderRoute(); }
 function routeVia(w){ if(!rStops.length){ toast(L('Nejdřív klepni na stanici, kde vlak začne.','First tap the station where the train starts.','Tippe zuerst auf den Startbahnhof.')); return; }
@@ -2270,7 +2293,7 @@ $('routePanel').addEventListener('click',e=>{ const b=e.target.closest('[data-rp
   if(a==='undo'){ const i=rStops.length-1; if(i>=0 && rVias[i] && rVias[i].length) rVias[i].pop(); else { rStops.pop(); rPlats.pop(); rVias.pop(); } renderRoute(); }
   else if(a==='exit') setTool('pan');
   else if(a==='list') showTrains();
-  else if(a==='done' && rStops.length>1){ const r=[...rStops], pk=[...rPlats], vv=rVias.map(a=>[...a]); setTool('pan'); openEditor(0); draft.route=r; draft.plats=pk.some(x=>x!=null)?pk:null; draft.vias=vv.some(a=>a.length)?vv:null; draft.waits=r.map(()=>0); autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); } });
+  else if(a==='done' && rStops.length>1){ const ch=routeCheck(rStops,rPlats,rVias); if(!ch.ok){ toast(legFailMsg(rStops,ch.i,rPlats),'bad',7000); return; } const r=[...rStops], pk=[...rPlats], vv=rVias.map(a=>[...a]); setTool('pan'); openEditor(0); draft.route=r; draft.plats=pk.some(x=>x!=null)?pk:null; draft.vias=vv.some(a=>a.length)?vv:null; draft.waits=r.map(()=>0); autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); } });
 const warned=new Set(); let warnOpen=false;
 setInterval(()=>{ if(warnOpen || !trains.length || !ready) return; let cs=[]; try{ cs=conflicts(trains,gameMin,gameMin+240).filter(c=>c.kind==='crash'); }catch(e){ return; }
   const c=cs.find(c=>!warned.has(c.trs.map(t=>t.id).sort().join('-'))); if(!c) return; warned.add(c.trs.map(t=>t.id).sort().join('-'));
