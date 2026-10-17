@@ -425,6 +425,13 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .mbody{overflow-y:auto;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
 .advisor{max-width:min(400px,calc(100% - 140px))} .advisor .hint{font-size:13px}
 @media (max-width:640px){ .mbody{max-height:none} .mcard{overflow:auto} }
+.routebtns{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.bigadd{border:0;border-radius:16px;padding:12px 18px;background:var(--berry);color:#fff;font-family:var(--f-display);font-weight:800;font-size:17px;box-shadow:0 4px 0 #4f43c9;flex:1 1 220px}
+.bigadd.alt{background:#efeaff;color:#4f43c9;box-shadow:0 4px 0 #cfc6ff}
+.bigadd:active{transform:translateY(2px)}
+.schip.big{padding:9px 14px;font-size:14.5px}
+.addstops{margin:6px 0 8px}
+.rs em{font-style:normal;opacity:.7;font-size:12px}
 @media (prefers-reduced-motion:reduce){ .rotate svg{animation:none} }
 </style>
 
@@ -1242,7 +1249,7 @@ const stationFull=(node,tr)=>trainsAt(node).filter(o=>o!==tr).length >= nodeSite
 const stationBlock = s => s.ports.map(q=>ekey(s.node,q));
 function occupiedInto(dest,tr){ const d=nodeSite.get(dest), out=[]; if(!d) return out;
   if(tr && tr._wantK!=null && tr._wantK<d.plat){ for(let k=0;k<d.plat;k++) if(k!==tr._wantK) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; } const used=new Set(trainsAt(dest).filter(o=>o!==tr).map(o=>o.plat));
-  for(const o of trains){ if(o===tr || o.st!=='run' && o.st!=='hold' || !o.path || o.path[o.path.length-1]!==dest || (o.pi===0 && o.path[0]===dest)) continue; const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); }
+  for(const o of trains){ if(o===tr || o._arrGrant!==dest || !o.path || o.path[o.path.length-1]!==dest) continue; const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); }   // trains already promised a track there
   for(let k=0;k<d.plat;k++) if(used.has(k)) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; }
 function routeFromPlat(s,k,to,tr){ const own=s.ports.filter(q=>portOf.get(q).k!==k).map(q=>ekey(s.node,q));
   let r=routePath(s.node,to,new Set([...own,...occupiedInto(to,tr)])); if(!r) r=routePath(s.node,to,new Set(own));
@@ -1314,7 +1321,7 @@ function tryEnter(tr){
   let p=tr.path; const n=p[tr.pi], dest=p[p.length-1];
   if(tr.pi===0 && isStationNode(n) && nodeSite.has(dest) && dest!==n){ const vias=(tr.vias||[])[tr.stopIdx]||[];
     if(!vias.length){ const r=arrivalFree(tr,n,dest); if(!r){ const dn=nodeSite.get(dest).name; tr.why=L(`čeká – v ${dn} není volná kolej (postav další kolej nebo výhybku)`,`waiting – no free track at ${dn} (add a track or a switch)`,`wartet – in ${dn} ist kein Gleis frei (Gleis oder Weiche bauen)`); return false; }
-      if(pathLen(r)<=pathLen(p)*1.3+60){ tr.path=p=r; } } }
+      if(pathLen(r)<=pathLen(p)*1.3+60){ tr.path=p=r; } tr._arrGrant=dest; } }
   if(!edges.has(ekey(n,p[tr.pi+1]))){ const np=routePath(n,dest); if(!np || np.length<2){ tr.why=L('chybí trať','no track','kein Gleis'); return false; } tr.path=p=np; tr.pi=0; }
   const nx=p[tr.pi+1];
   if(entrySig.has(n)){ let j=tr.pi+1; while(j<p.length-1 && portOf.has(p[j]) && portOf.has(p[j+1])) j++; const po=portOf.get(p[j]); if(po && p[j+1]===po.s.node){ const platBusy=(k,pt)=>trainsAt(po.s.node).some(o=>o!==tr && o.plat===k) || trains.some(o=>{ if(o===tr || o.st!=='run' || !o.path || o.path[o.path.length-2]!==pt) return false; const iN=o.path.indexOf(n); return iN>=0 && iN<o.pi; });
@@ -1329,6 +1336,10 @@ function tryEnter(tr){
     if(opp.size){ const alt=routePath(n,dest,opp,tr.pi>0?p[tr.pi-1]:null);
       const oc=q=>{ let c=0; for(let i=0;i<q.length-1;i++) if(opp.has(ekey(q[i],q[i+1]))) c++; return c; };
       if(alt && alt.length>1 && ownStart(tr,alt) && pathLen(alt)<=pathLen(p.slice(tr.pi))*1.3+60 && oc(alt)<oc(p.slice(tr.pi))){ tr.path=p=alt; tr.pi=0; } }
+    if(!isStationNode(n) && nodeSite.has(dest) && blockFrom(p,tr.pi).end===dest){
+      const bad=new Set(occupiedInto(dest,tr)); const r=routePath(n,dest,bad,tr.pi>0?p[tr.pi-1]:null); let ok=!!r; if(r) for(let i=0;i<r.length-1;i++) if(bad.has(ekey(r[i],r[i+1]))){ ok=false; break; }
+      if(!ok){ tr.why=L(`čeká u návěstidla – v ${nodeSite.get(dest).name} není volná kolej`,`waiting at the signal – no free track at ${nodeSite.get(dest).name}`,`wartet am Signal – in ${nodeSite.get(dest).name} ist kein Gleis frei`); return false; }
+      if(r.join()!==p.slice(tr.pi).join() && pathLen(r)<=pathLen(p.slice(tr.pi))*1.4+80){ tr.path=p=r; tr.pi=0; } tr._arrGrant=dest; }
     let blk=blockFrom(p,tr.pi);
     if(blockBusy(blk,tr)){
       const busy=new Set(); for(const [k,v] of occ) if(v!==tr.id) busy.add(k); for(const o of trains) if(o!==tr && o.st==='run'){ const k=curEdge(o); if(k) busy.add(k); }
@@ -1367,6 +1378,7 @@ function move(tr,dt){
   }
 }
 function arrive(tr){
+  tr._arrGrant=null;
   for(const x of (tr.relq||[])) if(occ.get(x.k)===tr.id) occ.delete(x.k); tr.relq=[];
   const node=tr.path[tr.path.length-1], s=nodeSite.get(node);
   let idx=tr.nextIdx; if(tr.route[idx]!==s.id) idx=tr.route.indexOf(s.id);
@@ -1467,7 +1479,7 @@ undoBtn.onclick=undo;
 const newAct = () => ({type:'build',added:[],removed:[],sigs:[],entries:[],amount:0,km:0});
 // Every junction gets a switch and a signal on each leg, so trains cannot meet inside it.
 const SIG_D=30;
-function addEntrySignals(act){ act.entries=act.entries||[];
+function addEntrySignals(act){ act.entries=act.entries||[]; return;
   for(const e of [...act.added]){ for(const [pt,o] of [[e.a,e.b],[e.b,e.a]]){ if(!portOf.has(pt) || portOf.has(o) || nodeSite.has(o)) continue; const k=ekey(pt,o), ed=edges.get(k); if(!ed) continue;
     if([...(adj.get(pt)||[])].some(x=>entrySig.has(x))) continue;
     let n=-1; if(ed.len>SIG_D+20 && !edgeBusy(k)){ const A=nodes[pt], B=nodes[o], f=SIG_D/ed.len; n=splitEdge(k,A.x+(B.x-A.x)*f,A.y+(B.y-A.y)*f,act); } else if(isTrackNode(o) && deg(o)===2) n=o;
@@ -2260,7 +2272,7 @@ function renderRoute(){ routeGroup.clear(); routeZoom=camD; const n=rStops.lengt
   if(n>=2) drawLeg(legPath(n-1,0), RT_DARK, 2.4);
   const pnl=$('routePanel'); if(pnl.hidden) return;
   pnl.innerHTML=`<h4>${L('Nová trasa','New route','Neue Strecke')}</h4><div class="rstops">${n?rStops.map((id,i)=>`<span class="${i===n-1&&n>1?'last':''}">${i+1}. ${site(id).name}${rPlats[i]!=null?' · '+L('kol.','trk','Gl.')+' '+(rPlats[i]+1):''}</span>${rVias[i]&&rVias[i].length?`<i title="via">⤳ ${L('přes','via','über')} ${rVias[i].length}×</i>`:''}`).join('<i>→</i>')+(n>1?'<i>↩</i>':''):`<p>${L('Klepni na stanici, kde vlak začne.','Tap the station where the train starts.','Tippe auf den Startbahnhof.')}</p>`}</div>
-    <div class="actions"><button class="btn small" data-rp="done" ${n<2?'disabled':''}>${L('Hotovo – vybrat vozy','Done – pick wagons','Fertig – Wagen wählen')}</button>${n?`<button class="btn small ghost" data-rp="undo">${L('Zpět o zastávku','Remove last stop','Letzten Halt entfernen')}</button>`:''}<button class="btn small ghost" data-rp="list">${L('Moje vlaky','My trains','Meine Züge')}</button><button class="btn small ghost" data-rp="exit">✕</button></div>`; }
+    <div class="actions"><button class="btn small" data-rp="done" ${n<2?'disabled':''}>${L('Hotovo – vybrat vozy','Done – pick wagons','Fertig – Wagen wählen')}</button>${n>=3?`<button class="btn small ghost" data-rp="mirror">⇄ ${L('A zpět','And back','Und zurück')}</button>`:''}${n?`<button class="btn small ghost" data-rp="undo">${L('Zpět o zastávku','Remove last stop','Letzten Halt entfernen')}</button>`:''}<button class="btn small ghost" data-rp="list">${L('Moje vlaky','My trains','Meine Züge')}</button><button class="btn small ghost" data-rp="exit">✕</button></div>`; }
 function openRoutePlanner(){ $('routePanel').hidden=false; renderRoute(); }
 function closeRoutePlanner(){ rStops=[]; rPlats=[]; rVias=[]; routeGroup.clear(); $('routePanel').hidden=true; }
 function strictLeg(fromNode,k,vias,toNode,wantK){ const s=nodeSite.get(fromNode), d=nodeSite.get(toNode);
@@ -2296,6 +2308,7 @@ function routeVia(w){ if(!rStops.length){ toast(L('Nejdřív klepni na stanici, 
 $('routePanel').addEventListener('click',e=>{ const b=e.target.closest('[data-rp]'); if(!b) return; const a=b.dataset.rp;
   if(a==='undo'){ const i=rStops.length-1; if(i>=0 && rVias[i] && rVias[i].length) rVias[i].pop(); else { rStops.pop(); rPlats.pop(); rVias.pop(); } renderRoute(); }
   else if(a==='exit') setTool('pan');
+  else if(a==='mirror' && rStops.length>=3){ const back=rStops.slice(1,-1).reverse(); rStops.push(...back); back.forEach(()=>{ rPlats.push(null); rVias.push([]); }); renderRoute(); }
   else if(a==='list') showTrains();
   else if(a==='done' && rStops.length>1){ const ch=routeCheck(rStops,rPlats,rVias); if(!ch.ok){ toast(legFailMsg(rStops,ch.i,rPlats),'bad',7000); return; } const r=[...rStops], pk=[...rPlats], vv=rVias.map(a=>[...a]); setTool('pan'); openEditor(0); draft.route=r; draft.plats=pk.some(x=>x!=null)?pk:null; draft.vias=vv.some(a=>a.length)?vv:null; draft.waits=r.map(()=>0); autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); } });
 const warned=new Set(); let warnOpen=false;
@@ -2370,7 +2383,7 @@ const showTrains=()=>openSheet(trainsHtml(),'trains');
 let draft=null;
 function openEditor(id, firstStop){
   const tr = id ? trains.find(t=>t.id===id) : null;
-  if(tr) draft={id:tr.id, name:tr.name, color:tr.color, consist:[...tr.consist], route:[...tr.route], start:tr.start, every:tr.every, waits:[...tr.waits], orig:[...tr.consist], manual:!tr.auto};
+  if(tr) draft={id:tr.id, plats:tr.plats?[...tr.plats]:null, vias:tr.vias?tr.vias.map(a=>[...(a||[])]):null, name:tr.name, color:tr.color, consist:[...tr.consist], route:[...tr.route], start:tr.start, every:tr.every, waits:[...tr.waits], orig:[...tr.consist], manual:!tr.auto};
   else { const st=Math.ceil(gameMin%1440+STOP_LOAD+1)%1440; draft={id:0, name:L('Vlak','Train','Zug')+' '+nextId, color:LOCO_COLORS[(nextId-1)%LOCO_COLORS.length], consist:[], route:firstStop?[firstStop]:[], start:st, every:2, waits:firstStop?[0]:[], orig:[], manual:false}; }
   openSheet(edHtml(),'editor');
 }
@@ -2435,20 +2448,22 @@ function edHtml(){
   if(!d.manual && d.route.length>1) fitEvery(d, true);
   const pl=planOf(d);
   let h=`<span class="eyebrow">${isNew?L('Nový vlak','New train','Neuer Zug'):L('Úprava vlaku','Edit train','Zug bearbeiten')}</span><h2><i class="dot" style="background:${d.color}"></i>${esc(d.name)}</h2>`;
-  // 1 · route
-  h+=`<h3 class="stepn"><span>1</span>${L('Kam pojede?','Where does it go?','Wohin fährt er?')}</h3>`;
-  if(d.route.length<2){
-    const sg=suggestions();
-    if(sg.length) h+=`<div class="sugg">`+sg.map(s=>`<button class="sug" data-ed="sug" data-a="${s.a.id}" data-b="${s.b.id}"><b>${s.a.name} ⇄ ${s.b.name}</b><span>${cargoDots(s.f)}</span></button>`).join('')+`</div>`;
-    else h+=`<div class="alert">${L('Zatím tu není trať mezi stanicemi, které si mají co vozit. Postav třeba koleje z Lipna do Č. Budějovic, budou po nich jezdit turisté.','There is no line yet between stations that have something to carry. Build track from Lipno to Č. Budějovice, for example, and tourists will ride on it.','Noch gibt es keine Strecke zwischen Bahnhöfen, die sich etwas zu liefern haben. Baue zum Beispiel Gleise von Lipno nach Č. Budějovice, dann fahren dort Touristen.')}</div>`;
-    h+=`<details class="more" ${d.route.length?'open':''}><summary>${L('Vybrat stanice ručně','Pick stations yourself','Bahnhöfe selbst wählen')}</summary>`;
+  // 1 · route: tap the stops in order; the train stops at every one of them, then starts over
+  h+=`<h3 class="stepn"><span>1</span>${L('Zastávky','Stops','Halte')}</h3>`;
+  if(d.route.length) h+=`<div class="routeline">`+d.route.map((sid,i)=>`<span class="rs"><em>${i+1}.</em> ${site(sid).name}<button data-ed="dels" data-i="${i}" aria-label="${L('Odebrat','Remove','Entfernen')} ${site(sid).name}">×</button></span>`).join('<span class="arr">→</span>')+(d.route.length>1?`<span class="arr" title="${L('pak znovu od začátku','then starts over','dann wieder von vorn')}">↩ ${site(d.route[0]).name}</span>`:'')+`</div>`;
+  else h+=`<p class="sub">${L('Klepni na stanice v pořadí, kudy má vlak jet. Vlak zastaví v každé z nich a pak jede znovu od první.','Tap the stations in the order the train should run. It stops at each one, then starts again from the first.','Tippe die Bahnhöfe in Fahrtreihenfolge an. Der Zug hält an jedem und beginnt dann wieder beim ersten.')}</p>`;
+  const last=d.route[d.route.length-1], lastK=null;
+  const reach = s2 => !last || (s2.id!==last && !!strictLeg(site(last).node,null,null,s2.node,null));
+  if(d.adding || !d.route.length){
+    h+=`<div class="stopchips addstops">`+SITES.filter(hasTrack).map(s2=>`<button class="schip big" data-ed="adds" data-s="${s2.id}" ${reach(s2)?'':'disabled'}>+ ${s2.name}</button>`).join('')+`</div>`;
+    if(d.route.length) h+=`<div class="actions left"><button class="btn small ghost" data-ed="addoff">${L('Hotovo se zastávkami','Done with stops','Fertig mit Halten')}</button></div>`;
   } else {
-    h+=`<div class="routeline">`+d.route.map((sid,i)=>`<span class="rs">${site(sid).name}${d.route.length>2?`<button data-ed="dels" data-i="${i}" aria-label="${L('Odebrat','Remove','Entfernen')}">×</button>`:''}</span>`).join('<span class="arr">→</span>')+`<span class="arr">↩</span></div>`;
-    h+= flows.length ? `<p class="sub">${L('Bude vozit','It will carry','Er fährt')}: </p><div class="cgs">${cargoDots(flows)}</div>` : `<div class="alert">${L('Mezi těmihle stanicemi se teď nic nevozí. Zkus jinou trasu.','Nothing travels between these stations right now. Try another route.','Zwischen diesen Bahnhöfen wird gerade nichts transportiert. Versuche eine andere Strecke.')}</div>`;
-    h+=`<div class="actions left"><button class="btn small ghost" data-ed="clr">${L('Jiná trasa','Other route','Andere Strecke')}</button></div><details class="more"><summary>${L('Přidat další zastávku','Add another stop','Weiteren Halt hinzufügen')}</summary>`;
+    const back=d.route.length>=3 ? d.route.slice(1,-1).reverse() : [];
+    const mirrored = d.route.length>=3 && d.route.length%2===0 && d.route.slice(d.route.length/2+1).join()===d.route.slice(1,d.route.length/2).reverse().join();
+    h+=`<div class="routebtns"><button class="bigadd" data-ed="addon">＋ ${L('Přidat zastávku','Add a stop','Halt hinzufügen')}</button>${back.length && !mirrored?`<button class="bigadd alt" data-ed="mirror">⇄ ${L('A zpět přes stejné zastávky','And back via the same stops','Und zurück über dieselben Halte')}</button>`:''}</div>`;
   }
-  const last=d.route[d.route.length-1];
-  h+=`<div class="stopchips">`+SITES.filter(hasTrack).map(s=>{ const ok=!last || (s.id!==last && !!routePath(site(last).node,s.node)); return `<button class="schip" data-ed="adds" data-s="${s.id}" ${ok?'':'disabled'}>+ ${s.name}</button>`; }).join('')+`</div></details>`;
+  if(d.route.length>1){ const ch=routeCheck(d.route,d.plats,d.vias); d.routeBad=!ch.ok; if(!ch.ok) h+=`<div class="alert">${legFailMsg(d.route,ch.i,d.plats)}</div>`; }
+  if(d.route.length>1) h+= flows.length ? `<p class="sub">${L('Bude vozit','It will carry','Er fährt')}: </p><div class="cgs">${cargoDots(flows)}</div>` : `<div class="alert">${L('Mezi těmihle stanicemi se teď nic nevozí. Přidej jinou zastávku.','Nothing travels between these stations right now. Add another stop.','Zwischen diesen Bahnhöfen wird gerade nichts transportiert. Füge einen anderen Halt hinzu.')}</div>`;
   if(d.route.length<2){ h+=`<div class="actions"><button class="btn ghost" data-ed="cancel">${L('Zpět','Back','Zurück')}</button></div>`; return h; }
   // 2 · consist
   h+=`<h3 class="stepn"><span>2</span>${L('Souprava','The train','Der Zug')} · ${d.consist.length}/8</h3>${trainStrip(d,true)}<p class="sub tiny">${L('Klepnutím na vůz ho odpojíš.','Tap a wagon to uncouple it.','Tippe auf einen Wagen, um ihn abzukoppeln.')}</p>`;
@@ -2472,7 +2487,7 @@ function edHtml(){
     const cs=conflicts(trains.filter(t=>t.id!==d.id).concat([d]),gameMin,gameMin+1440).filter(c=>c.trs.includes(d));
     if(cs.length) h+=cs.slice(0,3).map(conflictHtml).join('');
   } else if(pl.bad) h+=`<div class="alert">${pl.bad}</div>`;
-  const pr=draftPrice(d), canSave=pl.ok && d.consist.length>0 && money>=pr.cost-pr.refund;
+  const pr=draftPrice(d), canSave=pl.ok && !d.routeBad && d.consist.length>0 && money>=pr.cost-pr.refund;
   h+=`<div class="actions">`;
   h+= isNew ? `<button class="btn big" data-ed="save" ${canSave?'':'disabled'}>${L('Koupit a vypravit','Buy and send off','Kaufen und losschicken')} · ${fmtK(pr.cost)}</button>` : `<button class="btn" data-ed="save" ${canSave?'':'disabled'}>${L('Uložit','Save','Speichern')}${pr.cost?` (−${fmtK(pr.cost)})`:''}${pr.refund?` (+${fmtK(pr.refund)})`:''}</button>`;
   if(!isNew) h+=`<button class="btn ghost" data-ed="sell">${L('Prodat za','Sell for','Verkaufen für')} ${fmtK(sellValue(d))}</button>`;
@@ -2487,9 +2502,12 @@ function edAction(b){
   if(a==='addw' && d.consist.length<8){ d.consist.push(b.dataset.w); d.justAdded=true; }
   else if(a==='sug'){ d.route=[b.dataset.a,b.dataset.b]; d.waits=[0,0]; if(!d.id||!d.consist.length) autoConsist(d); }
   else if(a==='clr'){ d.route=[]; d.waits=[]; }
+  else if(a==='addon'){ d.adding=true; }
+  else if(a==='addoff'){ d.adding=false; }
+  else if(a==='mirror'){ const back=d.route.slice(1,-1).reverse(); d.route.push(...back); back.forEach(()=>d.waits.push(0)); d.plats=null; d.vias=null; fitEvery(d); }
   else if(a==='delw') d.consist.splice(+b.dataset.i,1);
-  else if(a==='adds'){ d.route.push(b.dataset.s); if(d.route.length===2 && !d.consist.length) autoConsist(d); fitEvery(d); }
-  else if(a==='dels'){ const i=+b.dataset.i; d.route.splice(i,1); d.waits.splice(i,1); }
+  else if(a==='adds'){ d.route.push(b.dataset.s); d.plats=null; d.vias=null; d.adding=true; if(d.route.length===2 && !d.consist.length) autoConsist(d); fitEvery(d); }
+  else if(a==='dels'){ const i=+b.dataset.i; d.route.splice(i,1); d.waits.splice(i,1); d.plats=null; d.vias=null; for(let j=d.route.length-1;j>0;j--) if(d.route[j]===d.route[j-1]){ d.route.splice(j,1); d.waits.splice(j,1); } if(d.route.length>1 && d.route[0]===d.route[d.route.length-1]){ d.route.pop(); d.waits.pop(); } }
   else if(a==='t'){ d.start=((d.start+(+b.dataset.v))%1440+1440)%1440; d.manual=true; }
   else if(a==='ev'){ d.every=+b.dataset.v; d.manual=true; }
   else if(a==='w'){ const i=+b.dataset.i; d.waits[i]=Math.max(0,(d.waits[i]||0)+(+b.dataset.v)); }
@@ -2508,7 +2526,7 @@ function saveDraft(){
   else { const tr=trains.find(t=>t.id===d.id); if(!tr){ showTrains(); return; }
     setMoney(money-pr.cost+pr.refund);
     const oldLoads=tr.loads; tr.consist=[...d.consist]; tr.loads=tr.consist.map((w,i)=>oldLoads[i] && WAGONS[w].carries.includes(oldLoads[i].c) ? oldLoads[i] : null);
-    const routeChanged = tr.route.join()!==d.route.join(); tr.route=[...d.route]; tr.start=d.start; tr.every=d.every; tr.waits=[...d.waits]; tr.auto=!d.manual; if(routeChanged){ tr.plats=d.plats||null; tr.vias=d.vias||null; }
+    const routeChanged = tr.route.join()!==d.route.join(); tr.route=[...d.route]; tr.start=d.start; tr.every=d.every; tr.waits=[...d.waits]; tr.auto=!d.manual; tr.plats=d.plats||null; tr.vias=d.vias||null;
     if(routeChanged){ tr.cycleBase=null; if(tr.at!=null){ const i=tr.route.indexOf(nodeSite.get(tr.at).id); if(i>=0){ tr.stopIdx=i; } else { tr.stopIdx=tr.route.length-1; } if(tr.st==='ready'){ tr.depAt=tr.plannedDep=(tr.stopIdx===0?nextSlot(tr,gameMin):gameMin); } } else tr.nextIdx=-1; }
     else if(tr.st==='ready' && tr.stopIdx===0){ tr.depAt=tr.plannedDep=nextSlot(tr,gameMin); }
     buildTrainMesh(tr); toast(L(`${tr.name} má nový jízdní řád.`,`${tr.name} has a new timetable.`,`${tr.name} hat einen neuen Fahrplan.`),'good'); }
@@ -2705,7 +2723,7 @@ function loadState(st){
   money=st.money; score=st.score||0; built=st.built||0; deliveries=st.deliveries||0; crashes=st.crashes||0; won=!!st.won; gameMin=st.gameMin||360; goalHit=!!st.goalHit; incomeLog=st.incomeLog||[]; curRate=-1;
   for(const [x,y] of st.nodes||[]) addNode(x,y);
   for(const [a,b,c] of st.edges||[]) if(nodes[a]&&nodes[b]) addEdge(a,b,c);
-    for(const s of st.signals||[]) if(nodes[s]) signals.add(s); for(const s of st.entry||[]) if(nodes[s]) entrySig.add(s);
+    for(const s of st.signals||[]) if(nodes[s]) signals.add(s); /* entry signals are no longer used */
   for(const x of st.sites||[]){ const s=site(x.id); if(!s) continue; Object.assign(s.stock,x.stock||{}); Object.assign(s.inbuf,x.inbuf||{}); s.tm=x.tm||{}; if(s.levels){ s.lvl=x.lvl||0; s.log=x.log||[]; s.since=x.since||0; s.best=x.best||0; s.got={}; s.done=!!x.done; } }
   for(const t of st.trains||[]) if(t.route.every(id=>site(id))) makeTrain(t);
   nextId=Math.max(nextId,st.nextId||1);
