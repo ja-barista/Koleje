@@ -3,6 +3,7 @@
   "short_name": "Žel. inženýr",
   "description": "Postav železnici napříč Českem a dovez městům, co potřebují.",
   "lang": "cs",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "fullscreen",

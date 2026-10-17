@@ -358,7 +358,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 @media (max-height:520px){ .tool small{display:none} .tool svg{width:21px;height:21px} .sheet{max-height:96%;padding-top:14px} .sheet h2{font-size:22px} }
 @media (orientation:portrait){ .hud{flex-wrap:wrap} .hud .goalpill{order:7;flex-basis:100%} .tools{top:calc(118px + env(safe-area-inset-top,0px))} .toast{top:calc(118px + env(safe-area-inset-top,0px))} .hint{width:calc(100% - 200px)} .routepanel{width:calc(100% - 110px)} }
 /* main menu */
-.menu{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 50% 40%,rgba(168,224,255,.55),rgba(34,48,77,.55));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.menu{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 50% 40%,rgba(168,224,255,.55),rgba(34,48,77,.55));}
 .mcard{width:min(860px,100%);max-height:100%;overflow:auto;background:var(--paper);border-radius:26px;box-shadow:0 8px 0 rgba(34,48,77,.22),0 20px 60px rgba(34,48,77,.3);display:grid;grid-template-columns:minmax(200px,0.9fr) 1.3fr}
 .mhead{background:linear-gradient(160deg,#ffe58a,var(--sun) 60%,#ffb020);padding:22px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;border-radius:26px 0 0 26px}
 .mhead h1{font-size:34px;line-height:.95}
@@ -2811,6 +2811,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
   if(menuView==='main'){
     if(prog||menuStarted) h+=mb('continue','▶',menuStarted?L('Pokračovat','Resume','Weiterspielen'):L('Pokračovat ve hře','Continue game','Spiel fortsetzen'),`${num(score)} ${L('bodů','points','Punkte')} · ${fmtK(money)}`,'primary')+mb('new','✚',L('Nová hra','New game','Neues Spiel'),L('začít od začátku','start from scratch','von vorn beginnen'));
     else h+=mb('new','▶',L('Nová hra','New game','Neues Spiel'),L('postav první trať','build your first line','baue deine erste Strecke'),'primary');
+    if(!isInstalled()) h+=mb('install','📲',L('Nainstalovat do telefonu','Install on your phone','Aufs Handy installieren'), installEvt?L('ikona na ploše, hraje se bez prohlížeče','an icon on your home screen, no browser bar','Symbol auf dem Startbildschirm, ohne Browserleiste'):L('jak na to','how to do it','so geht’s'));
     h+=mb('login','👤',L('Přihlášení','Sign in','Anmeldung'), mode==='local'?L('Google účet','Google account','Google-Konto'):esc(myName||L('přihlášen','signed in','angemeldet')));
     h+=mb('settings','⚙',L('Nastavení','Settings','Einstellungen'),L('zvuk, jazyk, ovládání, reset','sound, language, controls, reset','Ton, Sprache, Steuerung, Reset'));
     h+=mb('rules','📖',L('Pravidla','Rules','Regeln'),L('jak se hraje','how to play','so wird gespielt'));
@@ -2837,8 +2838,21 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
       <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
       <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerHour} mincí za herní hodinu, ta trvá minutu.`,`A wagon earns by cargo and distance. Running costs ${COST.runPerHour} coins per game hour, which lasts a minute.`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerHour} Münzen pro Spielstunde, die eine Minute dauert.`)}</p>`; }
+  else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn()}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
+      <p>${L('Hra se dá nainstalovat jen z prohlížeče Chrome (Android) nebo Safari (iPhone). Když ji otevřeš z jiné aplikace, třeba z Messengeru nebo Clauda, běží v jejich okně a instalace tam nejde.','The game can only be installed from Chrome (Android) or Safari (iPhone). Opened from another app, such as Messenger or Claude, it runs in that app’s window where installing is not possible.','Das Spiel lässt sich nur aus Chrome (Android) oder Safari (iPhone) installieren. Aus einer anderen App geöffnet, etwa Messenger oder Claude, läuft es in deren Fenster, und dort geht keine Installation.')}</p>
+      <ol><li>${L('Zkopíruj si odkaz na hru a vlož ho do Chromu (na iPhonu do Safari).','Copy the game link and paste it into Chrome (Safari on iPhone).','Kopiere den Spiellink und füge ihn in Chrome ein (Safari auf dem iPhone).')}</li>
+      <li>${L('Android: vpravo nahoře ⋮ → <b>Přidat na plochu</b> → <b>Instalovat</b>.','Android: top right ⋮ → <b>Add to Home screen</b> → <b>Install</b>.','Android: oben rechts ⋮ → <b>Zum Startbildschirm hinzufügen</b> → <b>Installieren</b>.')}</li>
+      <li>${L('iPhone: dole tlačítko Sdílet → <b>Přidat na plochu</b>.','iPhone: the Share button at the bottom → <b>Add to Home Screen</b>.','iPhone: unten Teilen → <b>Zum Home-Bildschirm</b>.')}</li></ol>
+      <div class="toggle"><span style="word-break:break-all">${esc(url)}</span><button class="btn small" data-m="copylink">${L('Kopírovat','Copy','Kopieren')}</button></div>
+      <p class="sub">${L('Postup se po přihlášení přes Google přenese i do nainstalované hry.','After signing in with Google your progress carries over to the installed game.','Nach der Google-Anmeldung kommt dein Fortschritt mit ins installierte Spiel.')}</p>`; }
   else if(menuView==='resetconfirm'){ h=`${backBtn()}<h2>${L('Resetovat hru?','Reset the game?','Spiel zurücksetzen?')}</h2><p>${L('Smažou se všechny tratě, vlaky, peníze i skóre a level začne znovu. Nejde to vrátit.','All lines, trains, coins and score are deleted and the level starts over. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht und das Level beginnt neu. Das lässt sich nicht rückgängig machen.')}</p>`+mb('resetgo','↺',L('Ano, resetovat','Yes, reset','Ja, zurücksetzen'),'','danger')+mb('settings','←',L('Ne, zpět','No, go back','Nein, zurück')); }
-  menuBody.innerHTML=h; }
+  if(h!==menuBody._h){ menuBody._h=h; menuBody.innerHTML=h; } }
+// installing as an app: Chrome offers it through this event once the page qualifies
+const GAME_URL='https://ja-barista.github.io/zeleznicni-inzenyr/';
+let installEvt=null;
+addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; renderMenu(); });
+addEventListener('appinstalled',()=>{ installEvt=null; toast(L('Hra je nainstalovaná – najdeš ji na ploše.','The game is installed – find it on your home screen.','Das Spiel ist installiert – du findest es auf dem Startbildschirm.'),'good',5000); renderMenu(); });
+const isInstalled=()=>{ try{ return matchMedia('(display-mode: standalone)').matches || (matchMedia('(display-mode: fullscreen)').matches && !document.fullscreenElement) || navigator.standalone===true; }catch(e){ return false; } };
 function startPlaying(fresh){ closeMenu(); menuStarted=true; goFullscreen(); sndInit(); if(fresh) showIntro(false); else showHint(HINTS[tool]()); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
   if(b.dataset.lang){ setLang(b.dataset.lang); return; }
@@ -2850,6 +2864,8 @@ menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) 
   else if(m==='reset'){ menuView='resetconfirm'; renderMenu(); }
   else if(m==='glogin'){ if(!window.FIREBASE_CONFIG) closeMenu(); googleLogin(); }
   else if(m==='glogout'){ googleLogout(); }
+  else if(m==='install'){ if(installEvt){ const ev=installEvt; installEvt=null; ev.prompt(); ev.userChoice.then(c=>{ if(c.outcome!=='accepted'){ installEvt=ev; } renderMenu(); }).catch(()=>{}); } else { menuView='install'; renderMenu(); } }
+  else if(m==='copylink'){ const done=()=>toast(L('Odkaz je zkopírovaný. Vlož ho do Chromu.','Link copied. Paste it into Chrome.','Link kopiert. Füge ihn in Chrome ein.'),'good'); try{ navigator.clipboard.writeText(GAME_URL).then(done,()=>prompt('',GAME_URL)); }catch(e){ prompt('',GAME_URL); } }
   else if(m==='snd') $('sndBtn').click();
   else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
   else if(m==='zoom0'||m==='zoom1'){ zoomInvert=m==='zoom1'; try{ localStorage.setItem('zi-zoom2',zoomInvert?'1':'0'); }catch(e){} renderMenu(); }
@@ -2972,6 +2988,7 @@ setInterval(()=>{ if(!SND.ready || !SND.on) return;
   if(daylight()>0.4 && Math.random()<0.25){ const lx=target.x+CX+(Math.random()-0.5)*200, ly=target.z+CZ+(Math.random()-0.5)*200; if(!SITES.some(s=>{ const n=nodes[s.node]; return Math.hypot(n.x-lx,n.y-ly)<150 && s.kind==='city'; })) sndBird(lx,ly); }
 },700);
 
+let lastMenuDraw=0;
 function frame(now){
   const real=Math.min(0.05,(now-last)/1000); last=now;
   const dt=menuEl.hidden ? real*SPEEDS[speedIdx] : 0; const n=Math.ceil(dt/0.25); for(let i=0;i<n;i++) step(dt/n);
@@ -2986,7 +3003,7 @@ function frame(now){
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.t+=real; v3.set(f.x-CX,20,f.y-CZ).project(camera);
     const tt=Math.max(0,f.t); const x=(v3.x+1)/2*W, y=(1-v3.y)/2*H-tt*40; f.el.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%)`; f.el.style.opacity=f.t<0?'0':String(Math.max(0,1-tt/1.4));
     if(f.t>1.4){ f.el.remove(); floats.splice(i,1); } }
-  if(W&&H) renderer.render(scene,camera);
+  if(W&&H && (menuEl.hidden || now-lastMenuDraw>400)){ renderer.render(scene,camera); if(!menuEl.hidden) lastMenuDraw=now; }
   requestAnimationFrame(frame);
 }
 applyStatic(); setTool('pan'); rebuildTracks(); renderNeeds(); resize(); $('speed').textContent=SPEED_LABEL[speedIdx]; setMoney(money);
