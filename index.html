@@ -1267,7 +1267,10 @@ function makeTrain(def){
   trains.push(tr); buildTrainMesh(tr); return tr;
 }
 function startLoading(tr){ tr.st='dwell'; tr.phase='unload'; tr.unl=[]; tr.phaseLeft=0; tr.depAt=tr.plannedDep=nextSlot(tr,gameMin); }
-function releaseTrain(tr){ for(const [k,v] of [...occ]) if(v===tr.id) occ.delete(k); }
+function releaseTrain(tr){ for(const [k,v] of [...occ]) if(v===tr.id) occ.delete(k); tr.relq=[]; }
+// a track is free only once the LAST wagon has left it, not when the locomotive does
+function releaseTail(tr){ const q=tr.relq; while(q && q.length && q[0].d<=(tr.odo||0)){ const k=q.shift().k; if(occ.get(k)===tr.id) occ.delete(k); } }
+const underTrain=(o,k)=> curEdge(o)===k || (o.relq||[]).some(x=>x.k===k);
 function depart(tr){
   const n=tr.route.length, next=(tr.stopIdx+1)%n, from=tr.at, to=stopNode(tr,next);
   tr._wantK=(tr.plats||[])[next]; if(tr._wantK===undefined) tr._wantK=null;
@@ -1301,7 +1304,7 @@ function blockBusy(b,tr){
       for(const o of trains){ if(o===tr || !o.path || (o.st!=='run' && o.st!=='hold')) continue; const j=o.path.indexOf(b.end, o.pi); if(j<0) continue;
         if(occ.get(k)===o.id || curEdge(o)===k) return true; } } }
   const es=new Set(b.edges), ns=new Set(b.nodes); if(!isStationNode(b.end)) ns.add(b.end);
-  for(const o of trains){ if(o===tr) continue; if(o.st==='run' && es.has(curEdge(o))) return true; const sn=stoppedNode(o); if(sn!=null && ns.has(sn)) return true; }
+  for(const o of trains){ if(o===tr) continue; if((o.st==='run'||o.st==='hold') && (es.has(curEdge(o)) || (o.relq||[]).some(x=>es.has(x.k)))) return true; const sn=stoppedNode(o); if(sn!=null && ns.has(sn)) return true; }
   return false;
 }
 function arrivalFree(tr,n,dest){ const s=nodeSite.get(n), bad=new Set(occupiedInto(dest,tr)); if(s && tr.plat>=0) s.ports.forEach(q=>{ if(portOf.get(q).k!==tr.plat) bad.add(ekey(n,q)); });
@@ -1348,10 +1351,10 @@ function gapAhead(tr){ const p=tr.path, a=p[tr.pi], b=p[tr.pi+1], c=p[tr.pi+2], 
 function move(tr,dt){
   let p=tr.path, a=p[tr.pi], b=p[tr.pi+1], L=segLen(p,tr.pi);
   if(!tr._sq && tr.pi>=p.length-4){ let d=Math.max(0,L-tr.t); for(let i=tr.pi+1;i<p.length-1;i++) d+=segLen(p,i); if(d<70){ tr._sq=true; const q=pos(tr); sndSqueal(q.x,q.y); } }
-  { const g=gapAhead(tr); if(g<12){ tr.why=tx(['jede za vlakem před sebou','following the train ahead','folgt dem Zug davor']); return; } tr.t+=Math.min(SPEED*dt, Math.max(0,g-10)); }
+  { const g=gapAhead(tr); if(g<12){ tr.why=tx(['jede za vlakem před sebou','following the train ahead','folgt dem Zug davor']); return; } const adv=Math.min(SPEED*dt, Math.max(0,g-10)); tr.t+=adv; tr.odo=(tr.odo||0)+adv; releaseTail(tr); }
   for(const o of trains){ if(o===tr||o.st!=='run'||!o.path) continue; if(o.path[o.pi]===b && o.path[o.pi+1]===a && tr.t+o.t>=L){ crash(tr,o); return; } }
   while(tr.t>=L){
-    const k=ekey(a,b); if(occ.get(k)===tr.id) occ.delete(k);
+    const k=ekey(a,b); (tr.relq||(tr.relq=[])).push({k, d:(tr.odo||0)-(tr.t-L)+trainLen(tr)+6});
     tr.loads.forEach(l=>{ if(l) l.km+=L*KM_PER_UNIT; });
     tr.t-=L; tr.pi++; const n=p[tr.pi];
     if(!isStationNode(n)){ const o=trains.find(o=>o!==tr && stoppedNode(o)===n); if(o){ crash(tr,o); return; } }
@@ -1364,6 +1367,7 @@ function move(tr,dt){
   }
 }
 function arrive(tr){
+  for(const x of (tr.relq||[])) if(occ.get(x.k)===tr.id) occ.delete(x.k); tr.relq=[];
   const node=tr.path[tr.path.length-1], s=nodeSite.get(node);
   let idx=tr.nextIdx; if(tr.route[idx]!==s.id) idx=tr.route.indexOf(s.id);
   const via=portOf.get(tr.path[tr.path.length-2]); tr.face = via ? -via.dir : 1; tr.path=null; tr.at=node; tr.plat = via && via.k!=null ? via.k : freePlat(node,tr); tr.st='dwell'; tr.trail=[]; tr.stopIdx=idx; tr.why=''; tr._floatN=0;
