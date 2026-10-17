@@ -324,9 +324,112 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 @media (min-width:760px){ h1{font-size:30px} .hint{min-height:auto} }
 @media (max-width:420px){ .player small{display:none} .player b{max-width:10ch} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+
+/* ===== full-screen landscape game: the map fills the screen, everything else floats on it ===== */
+.app{position:fixed;inset:0;max-width:none;margin:0;padding:0;gap:0;display:block}
+#gameView{position:absolute;inset:0;display:block}
+.stage{position:absolute;inset:0;border:0;border-radius:0;box-shadow:none;min-height:0}
+.hud{position:absolute;z-index:5;top:calc(6px + env(safe-area-inset-top,0px));left:calc(8px + env(safe-area-inset-left,0px));right:calc(8px + env(safe-area-inset-right,0px));display:flex;align-items:center;gap:6px;pointer-events:none}
+.hud .top,.hud .bar{display:contents}
+.hud .top>*,.hud .bar>*,.hud .chips>*{pointer-events:auto}
+.hud .clockbrand{order:1;background:rgba(255,255,255,.92);border-radius:14px;padding:3px 10px 3px 4px;box-shadow:0 3px 0 rgba(34,48,77,.18);gap:6px}
+.hud .stclock{width:40px;height:40px}
+.hud .clockinfo b{font-size:19px}
+.hud .clockinfo .eyebrow{font-size:10px}
+.hud .clockinfo small{font-size:10.5px}
+.hud .goalpill{order:2;flex:1;min-width:120px}
+.hud .chips{order:3}
+.hud .chip b{font-size:15px}
+.hud #playerBtn{display:none}
+.hud #sndBtn{order:4} .hud #speed{order:5} .hud #menuBtn{order:6}
+.speed{min-width:44px;min-height:44px;display:grid;place-items:center;padding:6px 10px}
+.menubtn{background:var(--berry);color:#fff;box-shadow:0 3px 0 #4f43c9}
+.tools{position:absolute;z-index:4;left:calc(8px + env(safe-area-inset-left,0px));top:calc(64px + env(safe-area-inset-top,0px));bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:center;gap:6px;width:76px}
+.tool{flex:0 1 auto;padding:6px 2px 5px;min-height:44px}
+.tool strong{font-size:12.5px}
+.undo{left:calc(96px + env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.zoom{right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.toast{top:calc(62px + env(safe-area-inset-top,0px))}
+.routepanel{left:calc(96px + env(safe-area-inset-left,0px));right:auto;width:min(560px,calc(100% - 180px));bottom:8px;max-height:calc(100% - 80px);overflow:auto}
+.hint{position:absolute;z-index:4;left:50%;bottom:calc(10px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(560px,calc(100% - 330px));min-height:0;background:rgba(255,255,255,.93);border-radius:14px;padding:7px 12px;box-shadow:0 3px 0 rgba(34,48,77,.15);opacity:0;pointer-events:none;transition:opacity .4s;font-size:12px}
+.hint.show{opacity:.97}
+#plansView,#levelsView{position:absolute;inset:0;z-index:7;background:linear-gradient(180deg,var(--sky),var(--sky-2));padding:calc(10px + env(safe-area-inset-top,0px)) calc(14px + env(safe-area-inset-right,0px)) 0 calc(14px + env(safe-area-inset-left,0px));display:flex}
+.sheet{max-height:92%;max-width:680px}
+@media (max-height:520px){ .tool small{display:none} .tool svg{width:21px;height:21px} .sheet{max-height:96%;padding-top:14px} .sheet h2{font-size:22px} }
+@media (orientation:portrait){ .hud{flex-wrap:wrap} .hud .goalpill{order:7;flex-basis:100%} .tools{top:calc(118px + env(safe-area-inset-top,0px))} .toast{top:calc(118px + env(safe-area-inset-top,0px))} .hint{width:calc(100% - 200px)} .routepanel{width:calc(100% - 110px)} }
+/* main menu */
+.menu{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(12px + env(safe-area-inset-bottom,0px));background:radial-gradient(ellipse at 50% 40%,rgba(168,224,255,.55),rgba(34,48,77,.55));backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.mcard{width:min(860px,100%);max-height:100%;overflow:auto;background:var(--paper);border-radius:26px;box-shadow:0 8px 0 rgba(34,48,77,.22),0 20px 60px rgba(34,48,77,.3);display:grid;grid-template-columns:minmax(200px,0.9fr) 1.3fr}
+.mhead{background:linear-gradient(160deg,#ffe58a,var(--sun) 60%,#ffb020);padding:22px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;border-radius:26px 0 0 26px}
+.mhead h1{font-size:34px;line-height:.95}
+.mhead .eyebrow{color:#6b4d00}
+.mtrain{width:100%;max-width:200px;height:auto}
+.mbody{padding:18px 20px;display:flex;flex-direction:column;gap:9px;min-width:0}
+.mbody h2{margin:0;font-family:var(--f-display);font-size:24px}
+.mbody h3{margin:10px 0 2px;font-family:var(--f-display);font-size:15px;color:var(--muted)}
+.mbody p{margin:0;font-weight:600;line-height:1.4}
+.mbody .sub{color:var(--muted);font-size:13px}
+.mbody ol{margin:2px 0;padding-left:20px;display:grid;gap:6px;font-weight:600;line-height:1.4}
+.mbtn{display:flex;align-items:center;gap:12px;width:100%;border:0;border-radius:16px;padding:11px 14px;background:var(--paper-2);box-shadow:0 4px 0 var(--line);text-align:left;font-family:var(--f-display);font-weight:700;font-size:18px;color:var(--ink)}
+.mbtn:active{transform:translateY(2px)}
+.mbtn.primary{background:var(--leaf);color:#fff;box-shadow:0 4px 0 #23964f;font-size:20px}
+.mbtn i{font-style:normal;font-size:22px;width:28px;text-align:center}
+.mbtn small{display:block;font-family:var(--f-body);font-weight:700;font-size:12px;opacity:.75}
+.mbtn.danger{background:#ffe3e1;box-shadow:0 4px 0 #f3b3ae;color:#b3261e}
+.mrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.mback{align-self:flex-start}
+.mfoot{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;font-weight:700;margin-top:4px}
+.mfoot img{width:24px;height:24px;border-radius:50%}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--paper-2);border-radius:14px;padding:9px 12px;font-weight:700}
+.toggle input[type=range]{flex:1;max-width:220px;accent-color:var(--berry)}
+.sw{border:0;border-radius:99px;width:54px;height:30px;background:#c9d6e6;position:relative;flex-shrink:0;padding:0}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.sw[aria-checked="true"]{background:var(--leaf)} .sw[aria-checked="true"]::after{left:27px}
+@media (max-width:640px){ .mcard{grid-template-columns:1fr} .mhead{border-radius:26px 26px 0 0;padding:14px 18px;flex-direction:row;align-items:center;flex-wrap:wrap} .mtrain{max-width:90px} .mhead h1{font-size:26px} }
+@media (max-height:460px){ .mhead{padding:14px 16px} .mhead h1{font-size:28px} .mtrain{max-width:140px} .mbody{padding:12px 16px;gap:7px} .mbtn{padding:8px 12px;font-size:16.5px} .mbtn.primary{font-size:18px} }
+.rotate{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(34,48,77,.86);color:#fff;text-align:center}
+.rotate>div{display:grid;justify-items:center;gap:12px;font-family:var(--f-display);font-size:20px}
+.rotate svg{animation:rot 2s ease-in-out infinite}
+@keyframes rot{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(-90deg)}}
+
+/* ===== reference style: big numbers on the map, icon column on the right, advisor with tips ===== */
+.hud .chip{background:none;box-shadow:none;padding:0 4px;align-items:flex-start}
+.hud .chip small{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6);font-size:10px}
+.hud .chip b{color:#fff;font-size:24px;line-height:1;text-shadow:0 2px 0 rgba(0,0,0,.35),0 0 8px rgba(0,0,0,.35)}
+.hud .chip b.neg{color:#ffb3ad} .hud .chip b.up{color:#b9ffcf}
+.hud .chips{order:0;gap:10px}
+.hud .clockbrand{order:1}
+.hud .goalpill{order:2;flex:0 1 330px;margin-left:auto}
+.hud #sndBtn{order:4} .hud #speed{order:5}
+.hud{right:calc(96px + env(safe-area-inset-right,0px))}
+.tools{left:auto;right:calc(8px + env(safe-area-inset-right,0px));top:calc(6px + env(safe-area-inset-top,0px));bottom:auto;max-height:calc(100% - 12px);justify-content:flex-start;width:78px}
+.tools .tool{background:rgba(255,255,255,.93)}
+.tools .tool[data-tool="pan"]{display:none}
+.tools .menubtn{width:100%;min-height:46px;border-radius:15px;display:grid;place-items:center}
+.building .tools{display:none}
+.donebtn{position:absolute;z-index:6;top:calc(8px + env(safe-area-inset-top,0px));right:calc(8px + env(safe-area-inset-right,0px));display:flex;align-items:center;gap:6px;border:0;border-radius:99px;padding:6px 10px 6px 18px;background:#fff;font-family:var(--f-display);font-weight:800;font-size:19px;color:var(--ink);box-shadow:0 4px 0 rgba(34,48,77,.25)}
+.building .hud{right:calc(150px + env(safe-area-inset-right,0px))}
+.undo{left:auto;right:calc(10px + env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.zoom{right:auto;left:calc(10px + env(safe-area-inset-left,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));flex-direction:row;align-items:center}
+.zoom>button{width:40px;height:40px}
+.advisor{position:absolute;z-index:5;left:calc(10px + env(safe-area-inset-left,0px));bottom:calc(60px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;gap:0;pointer-events:none;max-width:min(460px,calc(100% - 120px))}
+.advface{pointer-events:auto;width:58px;height:58px;border:0;padding:0;border-radius:50%;background:none;flex-shrink:0;filter:drop-shadow(0 3px 0 rgba(34,48,77,.25));z-index:1}
+.advface svg{width:100%;height:100%}
+.advisor .hint{position:static;transform:none;width:auto;margin:0 0 6px -6px;padding:9px 14px 9px 16px;border-radius:4px 16px 16px 16px;background:#fff;font-size:13.5px;line-height:1.35;font-weight:700;opacity:0;transition:opacity .35s,transform .35s;transform:translateX(-8px)}
+.advisor .hint.show{opacity:1;transform:none;pointer-events:auto}
+.toast{top:calc(64px + env(safe-area-inset-top,0px))}
+.routepanel{left:calc(10px + env(safe-area-inset-left,0px));right:calc(10px + env(safe-area-inset-right,0px));width:auto;max-width:640px;margin:0 auto;bottom:8px}
+@media (max-height:460px){ .hud .clockinfo .eyebrow{display:none} .hud .chip b{font-size:20px} .advface{width:48px;height:48px} .tools{gap:5px} .tool{min-height:40px;padding:4px 2px} }
+@media (orientation:portrait){ .hud{right:calc(96px + env(safe-area-inset-right,0px))} .tools{top:calc(6px + env(safe-area-inset-top,0px))} }
+.mcard{overflow:hidden;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
+.mbody{overflow-y:auto;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px)}
+.advisor{max-width:min(400px,calc(100% - 140px))} .advisor .hint{font-size:13px}
+@media (max-width:640px){ .mbody{max-height:none} .mcard{overflow:auto} }
+@media (prefers-reduced-motion:reduce){ .rotate svg{animation:none} }
 </style>
 
 <div class="app">
+  <div class="hud" id="hud">
   <header class="top">
     <div class="brand clockbrand">
       <svg class="stclock" id="stclock" viewBox="0 0 100 100" aria-label="06:00" role="img"><circle cx="50" cy="50" r="48" fill="#1d2433"/><circle cx="50" cy="50" r="43" fill="#fbfbf7"/><rect x="48.6" y="6" width="2.8" height="11" transform="rotate(0 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(30 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(60 50 50)" fill="#1d2433"/><rect x="48.6" y="6" width="2.8" height="11" transform="rotate(90 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(120 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(150 50 50)" fill="#1d2433"/><rect x="48.6" y="6" width="2.8" height="11" transform="rotate(180 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(210 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(240 50 50)" fill="#1d2433"/><rect x="48.6" y="6" width="2.8" height="11" transform="rotate(270 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(300 50 50)" fill="#1d2433"/><rect x="48.6" y="7" width="1.6" height="7" transform="rotate(330 50 50)" fill="#1d2433"/>
@@ -352,6 +455,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
     </div>
     <button class="speed" id="sndBtn" aria-label="Zvuk">🔊</button>
     <button class="speed" id="speed" aria-label="Rychlost hry">1×</button>
+    <button class="speed menubtn" id="menuBtn" aria-label="Menu"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  </div>
   </div>
 
   <section class="view" id="gameView">
@@ -381,7 +486,11 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="13" height="11" rx="2"/><path d="M16 9h3l2 3v4h-5M3 11h13"/><circle cx="7" cy="18.5" r="2"/><circle cx="17" cy="18.5" r="2"/></svg>
         <strong data-i18n="depotT">Vlaky</strong><small data-i18n="depotS">trasy</small></button>
     </div>
-    <p class="hint" id="hint"></p>
+    <div class="advisor" id="advisor">
+      <button class="advface" id="advFace" aria-label="Rada výpravčího"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="31" fill="#eef7ff"/><path d="M12 64c2-14 10-20 20-20s18 6 20 20z" fill="#1f3b73"/><path d="M27 44h10l-5 9z" fill="#fff"/><path d="M30.5 46h3l-1.5 8z" fill="#ff5a4f"/><ellipse cx="32" cy="31" rx="12" ry="13" fill="#f2c4a0"/><path d="M20 33c1 9 6 14 12 14s11-5 12-14c-2 3-5 4-12 4s-10-1-12-4z" fill="#8a5a3b"/><path d="M26 37q6 3 12 0" stroke="#5a3a24" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="27" cy="29" r="1.8" fill="#22304d"/><circle cx="37" cy="29" r="1.8" fill="#22304d"/><path d="M17 22c0-7 7-11 15-11s15 4 15 11z" fill="#e8322b"/><rect x="15" y="20" width="34" height="5" rx="2.5" fill="#22304d"/><circle cx="32" cy="15.5" r="2.6" fill="#ffc93c"/></svg></button>
+      <p class="hint" id="hint"></p>
+    </div>
+    <button class="donebtn" id="doneBtn" hidden><span>Hotovo</span><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#2bb35a" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6"/></svg></button>
   </section>
 
   <section class="view" id="plansView" hidden>
@@ -393,6 +502,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
   </section>
 </div>
 
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
+  <div class="mcard">
+    <div class="mhead">
+      <svg class="mtrain" viewBox="0 0 120 56" aria-hidden="true"><rect x="2" y="48" width="116" height="4" rx="2" fill="#8a5a3b"/><rect x="6" y="14" width="56" height="28" rx="7" fill="#ff5a4f"/><rect x="12" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="28" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="44" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="66" y="18" width="48" height="24" rx="6" fill="#7b6cff"/><rect x="72" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><rect x="86" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><rect x="100" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><circle cx="18" cy="45" r="5" fill="#22304d"/><circle cx="50" cy="45" r="5" fill="#22304d"/><circle cx="78" cy="45" r="5" fill="#22304d"/><circle cx="104" cy="45" r="5" fill="#22304d"/><rect x="10" y="8" width="40" height="5" rx="2.5" fill="#22304d"/></svg>
+      <h1 id="menuTitle">Železniční <span>inženýr</span></h1>
+      <p class="eyebrow" id="menuSub"></p>
+    </div>
+    <div class="mbody" id="menuBody"></div>
+  </div>
+</div>
+<div class="rotate" id="rotateHint" hidden><div><svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M20 15a8 8 0 0 1-6 6M17 21l-3 0 0-3"/></svg><b id="rotateTxt">Otoč telefon na šířku</b><button class="btn ghost small" id="rotateSkip">Hrát na výšku</button></div></div>
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" hidden></div>
 
@@ -1495,8 +1615,8 @@ Object.assign(sun.shadow.camera,{left:-800,right:800,top:620,bottom:-620,near:80
 scene.add(sun); scene.add(sun.target);
 
 function canvasTex(w,h,draw){ const c=document.createElement('canvas'); c.width=w; c.height=h; draw(c.getContext('2d'),w,h); const t=new T.CanvasTexture(c); t.wrapS=t.wrapT=T.RepeatWrapping; t.anisotropy=4; return t; }
-const grassTex=canvasTex(256,256,(g,w,h)=>{ g.fillStyle='#8fd65e'; g.fillRect(0,0,w,h);
-  for(let i=0;i<2400;i++){ g.fillStyle=Math.random()<0.5?'rgba(104,186,66,0.5)':'rgba(176,232,118,0.55)'; g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*3,2+Math.random()*3); }
+const grassTex=canvasTex(256,256,(g,w,h)=>{ g.fillStyle='#86c052'; g.fillRect(0,0,w,h);
+  for(let i=0;i<2600;i++){ const r=Math.random(); g.fillStyle=r<0.45?'rgba(92,150,52,0.5)':(r<0.85?'rgba(160,210,100,0.5)':'rgba(150,130,80,0.35)'); g.fillRect(Math.random()*w,Math.random()*h,2+Math.random()*3,2+Math.random()*3); }
   for(let i=0;i<70;i++){ g.fillStyle=['#ffffff','#ffe36b','#ff9ec4'][i%3]; g.beginPath(); g.arc(Math.random()*w,Math.random()*h,1.3,0,7); g.fill(); } });
 grassTex.repeat.set(1/90,1/90);
 const waterTex=canvasTex(256,256,(g,w,h)=>{ g.fillStyle='#4fb3e8'; g.fillRect(0,0,w,h); g.strokeStyle='rgba(255,255,255,0.35)'; g.lineWidth=2;
@@ -1507,7 +1627,7 @@ const smokeTex=canvasTex(64,64,(g)=>{ const gr=g.createRadialGradient(32,32,2,32
 const mat = c => new T.MeshLambertMaterial({color:c});
 const flat = c => new T.MeshPhongMaterial({color:c, flatShading:true, shininess:0});
 const M = { grass:new T.MeshLambertMaterial({map:grassTex}), dirt:mat('#c98d55'), sand:mat('#f5dc9a'), water:new T.MeshLambertMaterial({map:waterTex}), river:mat('#5ccaf7'),
-  ballast:mat('#b8afa2'), sleeper:mat('#8a5a3b'), rail:mat('#7f8a99'), trunk:mat('#8a5a3b'), leaf1:mat('#3fae4f'), leaf2:mat('#5cc85a'),
+  ballast:mat('#b8afa2'), sleeper:mat('#8a5a3b'), rail:mat('#7f8a99'), trunk:mat('#8a5a3b'), leaf1:mat('#2f9446'), leaf2:mat('#4fae4f'),
   dark:mat('#3a4150'), white:mat('#ffffff'), yellow:mat('#ffc93c'), red:mat('#ff5a4f'), plaza:mat('#efe3c4'), roof:mat('#e8574b'), glass:mat('#bfe6ff'),
   rock:flat('#9a9f7a'), rock2:flat('#7fa060'), snow:flat('#ffffff'), hill:flat('#77c454'), girder:mat('#4f8a6e'), brick:mat('#c96f52'), stone:mat('#b9b2a5'),
   concrete:mat('#d8d4cc'), metal:mat('#aeb8c4'), metalDark:mat('#6c7787'), copper:mat('#d9894a'), skoda:mat('#4ba82e'), tire:mat('#24272d') };
@@ -1993,8 +2113,8 @@ cv.addEventListener('pointerdown',e=>{
 });
 // Drawing a line with one finger: straight pieces every ~90 units, joined by smooth curves.
 // Dragging only shows where the line will go; it is built in one go when the finger lifts.
-const prevMat=new T.MeshBasicMaterial({color:'#ffc93c',transparent:true,opacity:0.85,depthTest:false}), prevBad=new T.MeshBasicMaterial({color:'#ff5a4f',transparent:true,opacity:0.85,depthTest:false});
-const prevBars=[]; for(let i=0;i<10;i++){ const m=new T.Mesh(box,prevMat); m.visible=false; m.renderOrder=20; scene.add(m); prevBars.push(m); }
+const prevMat=new T.MeshBasicMaterial({color:'#1e9bff',transparent:true,opacity:0.9,depthTest:false}), prevBad=new T.MeshBasicMaterial({color:'#ff5a4f',transparent:true,opacity:0.85,depthTest:false});
+const prevBars=[]; for(let i=0;i<80;i++){ const m=new T.Mesh(box,prevMat); m.visible=false; m.renderOrder=20; scene.add(m); prevBars.push(m); }
 function hidePreview(){ prevBars.forEach(m=>m.visible=false); }
 function showPreview(pl){ const P=pl.map(ptPos); let cost=countNewCrossings(P)*FLY_COST, bad=false; for(let i=0;i<P.length-1;i++){ cost+=costPts(P[i],P[i+1]); if(segHitsStation(P[i],P[i+1])) bad=true; } if(cost>money) bad=true;
   prevBars.forEach((m,i)=>{ if(i>=P.length-1){ m.visible=false; return; } const A=P[i],B=P[i+1], L=Math.hypot(B.x-A.x,B.y-A.y); m.visible=L>0.5; m.material=bad?prevBad:prevMat; m.position.set((A.x+B.x)/2-CX,4,(A.y+B.y)/2-CZ); m.rotation.set(0,-Math.atan2(B.y-A.y,B.x-A.x),0); m.scale.set(L,0.8,4); });
@@ -2163,25 +2283,17 @@ setInterval(()=>{ if(cardSite){ const h=cityCardHtml(cardSite); if(h!==tcHtml){ 
 /* ================= tools UI ================= */
 const HINTS0=1;
 const HINTS={
-  route:()=>L('Klepej na stanice v pořadí, kudy má vlak jet. Klepnutím na kolej mezi stanicemi (třeba druhou kolej výhybny) určíš, kudy má vlak projet. Klepnutím přímo na kolej ve stanici zvolíš, na kterou kolej vlak přijede – na okruhu tak může jet jinudy tam a jinudy zpět. Světle modrá je právě přidaná cesta, tmavě modrá zbytek trasy a cesta zpátky na start. Pak dej Hotovo a vyber vozy.',
-    'Tap the stations in the order the train should visit them. Tap a track between stations (for example the second track of a passing loop) to send the train that way. Tap a platform track to choose which track the train arrives on – on a loop it can go one way and come back the other. Light blue is the leg you just added, dark blue the rest of the route and the way back to the start. Then tap Done and pick wagons.',
-    'Tippe die Bahnhöfe in der Reihenfolge an, die der Zug fahren soll. Tippe auf ein Gleis zwischen den Bahnhöfen (z. B. das zweite Gleis einer Ausweiche), damit der Zug dort entlangfährt. Tippe auf ein Bahnsteiggleis, um das Ankunftsgleis zu wählen – auf einem Ring fährt der Zug so hin und zurück auf verschiedenen Wegen. Hellblau ist der neue Abschnitt, dunkelblau der Rest und der Rückweg zum Start. Dann auf Fertig tippen und Wagen wählen.'),
-  track:()=>L('Klepni na stanici nebo kolej a pak na cíl, nebo táhni prstem od startu k cíli – trať se postaví v plynulém oblouku, až prst zvedneš. Trať se vždy napojí jen na jednu kolej ve stanici – na tu, na kterou nebo před kterou klepneš. Výhybku uděláš jen ty: začni novou trať na existující koleji. Kilometr stojí 75 mincí, v tunelu 150. Na počítači: klikni na start a na cíl, tažením myší posouváš mapu, dvojklikem přibližuješ.',
-    'Tap a station or track, then the destination, or drag from start to destination – the line is built as a smooth curve when you lift your finger. A line always joins just one platform track – the one you tap on or in front of. Switches appear only where you start a new line on an existing track. A kilometre costs 75 coins, 150 in a tunnel. On a computer: click the start and the destination, drag the mouse to move the map, double-click to zoom in.',
-    'Tippe auf einen Bahnhof oder ein Gleis und dann aufs Ziel, oder ziehe vom Start zum Ziel – die Strecke wird als sanfter Bogen gebaut, wenn du loslässt. Eine Strecke schließt immer nur an ein Bahnsteiggleis an – das, auf oder vor das du tippst. Weichen entstehen nur, wo du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Kilometer kostet 75 Münzen, im Tunnel 150. Am Computer: Start und Ziel anklicken, mit gedrückter Maus verschieben, Doppelklick zoomt hinein.'),
-  signal:()=>L('Návěstidlo kryje úsek (oddíl) až k dalšímu návěstidlu nebo stanici. Když je oddíl obsazený, ukazuje stůj a vlak počká. Každá odbočka dostane výhybku a návěstidla sama, před stanicí stojí vjezdové návěstidlo. Na jednokolejce postav výhybnu (krátkou druhou kolej) – vlaky se v ní vyhnou. 600 mincí.',
-    'A signal protects the section up to the next signal or station. If the section is occupied, the train waits. Every junction gets a switch and signals automatically. A train leaving a station waits if the section ahead is taken. 600 coins.',
-    'Ein Signal sichert den Abschnitt bis zum nächsten Signal oder Bahnhof. Ist er belegt, wartet der Zug. Jede Abzweigung bekommt automatisch eine Weiche und Signale. Ein Zug im Bahnhof wartet, wenn der Abschnitt dahinter belegt ist. 600 Münzen.'),
-  demolish:()=>L('Klepni na kolej. Rozebere se a vrátí se ti 60 % ceny. Spletl ses? Tlačítko Zpět vrátí celou částku.',
-    'Tap a track. It is removed and you get 60 % back. Made a mistake? The Undo button refunds the full price.',
-    'Tippe auf ein Gleis. Es wird abgebaut und du bekommst 60 % zurück. Vertan? Die Taste Zurück erstattet den vollen Preis.'),
-  pan:()=>L('Ukazatel nic nestaví ani neplatí. Klepnutím na stanici zobrazíš sklad, výrobu a odjezdy. Jedním prstem posuneš mapu. Prsty od sebe přiblíží, k sobě oddálí, otočením dvou prstů pohled otočíš. Na počítači otáčíš šipkami u mapy nebo klávesami Q a E.',
-    'The Pointer builds nothing and costs nothing. Tap a station to see its stock, production and departures. One finger moves the map. Spread two fingers to zoom in, pinch to zoom out, twist them to turn the view. On a computer use the arrows by the map or the Q and E keys.',
-    'Der Zeiger baut nichts und kostet nichts. Tippe auf einen Bahnhof für Lager, Produktion und Abfahrten. Ein Finger verschiebt die Karte. Finger spreizen zoomt hinein, zusammenziehen heraus, Drehen dreht die Ansicht. Am Computer drehst du mit den Pfeilen an der Karte oder mit Q und E.')
+  route:()=>L('Klepej na stanice v pořadí, kudy má vlak jet, a pak vyber vozy.','Tap the stations in the order the train should visit them, then pick the wagons.','Tippe die Bahnhöfe in Fahrtreihenfolge an und wähle dann die Wagen.'),
+  track:()=>L('Táhni prstem od stanice nebo koleje k cíli. Trať se postaví, až prst zvedneš.','Drag from a station or a track to the destination. The line is built when you lift your finger.','Zieh vom Bahnhof oder Gleis zum Ziel. Die Strecke wird gebaut, wenn du loslässt.'),
+  signal:()=>L('Klepni na kolej a postav návěstidlo. Kryje úsek až k dalšímu návěstidlu.','Tap a track to place a signal. It protects the section up to the next signal.','Tippe auf ein Gleis für ein Signal. Es sichert den Abschnitt bis zum nächsten Signal.'),
+  demolish:()=>L('Klepni na kolej a rozebereš ji. Vrátí se ti 60 % ceny.','Tap a track to remove it. You get 60 % back.','Tippe auf ein Gleis zum Abbauen. Du bekommst 60 % zurück.'),
+  pan:()=>L('Klepni na stanici a uvidíš, co potřebuje. Stavět začneš ikonou vpravo.','Tap a station to see what it needs. Start building with an icon on the right.','Tippe auf einen Bahnhof, um zu sehen, was er braucht. Gebaut wird mit den Symbolen rechts.'),
 };
-function setTool(t){ tool=t; if(t!=='track') anchor=null; if(t==='route') openRoutePlanner(); else closeRoutePlanner(); document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t))); $('hint').textContent=HINTS[t](); if(dotsMesh) dotsMesh.visible=t==='track'||t==='signal'; }
-document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
-$('sndBtn').onclick=()=>{ SND.on=!SND.on; try{ localStorage.setItem('zi-sound',SND.on?'1':'0'); }catch(e){} sndInit(); if(SND.master) SND.master.gain.setTargetAtTime(SND.on?0.9:0,SND.ctx.currentTime,0.05); sndBtnPaint(); };
+function setTool(t){ tool=t; if(t!=='track') anchor=null; if(t==='route') openRoutePlanner(); else closeRoutePlanner(); document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t))); showHint(HINTS[t]()); document.body.classList.toggle('building',t!=='pan'); $('doneBtn').hidden=t==='pan'; if(dotsMesh) dotsMesh.visible=t==='track'||t==='signal'; }
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool===tool?'pan':b.dataset.tool));
+$('tools').prepend($('menuBtn')); $('doneBtn').onclick=()=>setTool('pan');
+$('advFace').onclick=()=>{ const h=$('hint'); if(h.classList.contains('show')){ h.classList.remove('show'); } else showHint(HINTS[tool]()); };
+$('sndBtn').onclick=()=>{ SND.on=!SND.on; try{ localStorage.setItem('zi-sound',SND.on?'1':'0'); }catch(e){} sndInit(); sndApply(); sndBtnPaint(); renderMenu(); };
 $('speed').onclick=e=>{ speedIdx=(speedIdx+1)%SPEEDS.length; e.currentTarget.textContent=SPEED_LABEL[speedIdx]; };
 
 function goalCard(){ const r=Math.max(0,curRate), cd=citiesDone(), n=consumers.length;
@@ -2393,10 +2505,9 @@ function showSite(s){
   openSheet(h+`<div class="actions"><button class="btn" data-open="new" data-from="${s.id}">${L('Nový vlak odsud','New train from here','Neuer Zug von hier')}</button><button class="btn ghost" data-close>${L('Zavřít','Close','Schließen')}</button></div>`,'site');
 }
 const langChips = () => `<div class="stopchips lang">${[['cs','Čeština'],['en','English'],['de','Deutsch']].map(([k,n])=>`<button class="schip ${LANG===k?'on':''}" data-lang="${k}">${n}</button>`).join('')}</div>`;
-function showIntro(resumed){
-  if(resumed){ openSheet(`${langChips()}<span class="eyebrow">${L('Vítej zpátky','Welcome back','Willkommen zurück')}</span><h2>${L('Pokračujeme v Česku','Back to Czechia','Weiter in Tschechien')}</h2><p>${L('Tratě, vlaky, jízdní řády i skóre jsou nahrané tak, jak jsi je nechal.','Your lines, trains, timetables and score are just as you left them.','Strecken, Züge, Fahrpläne und Punkte sind so geladen, wie du sie verlassen hast.')}</p><div class="actions"><button class="btn" data-close>${L('Hrát','Play','Spielen')}</button></div>`,'intro'); return; }
-  const items = L([
-    'Dva prsty od sebe mapu přiblíží, k sobě oddálí, otočením pohled otočí. Tlačítko <b>Ukazatel</b> nic nestaví, s ním se můžeš bezpečně dívat.',
+function introItems(){
+  return L([
+    'Dva prsty od sebe mapu přiblíží, k sobě oddálí, otočením pohled otočí. Ikony vpravo zapínají stavění; <b>Hotovo</b> stavění ukončí a pak se můžeš bezpečně dívat.',
     'Koleje se staví ze stanice nebo z tratě, kterou už máš. Klepni na Č. Budějovice a pak na Prahu. Potom klepni na Lipno a na Budějovice. Trať se sama napojí.',
     'Ve <b>Vlacích</b> sestav soupravu: lokomotiva a 1 až 8 vozů. Na turisty osobní vozy, na vodu cisterny. Vozy se dají kombinovat.',
     'Zadej trasu, třeba Lipno → Č. Budějovice → Praha, a jízdní řád: kdy vlak odjíždí a jak často jede.',
@@ -2405,7 +2516,7 @@ function showIntro(resumed){
     '<b>Počítej s penězi.</b> Na začátku se vyplatí levné spoje s lidmi a poštou mezi blízkými městy. Víno a auta vydělají hodně, ale potřebují drahé vozy, dlouhé tratě a suroviny z několika míst. Kdo je postaví hned, dlouho čeká na peníze.',
     'Turistická místa jako Český Krumlov, Valtice, Karlovy Vary, Kutná Hora a Telč chtějí hlavně turisty z velkých měst.',
     `<b>Cíl levelu:</b> všechna města na úrovni 3/3 a obrat aspoň ${num(GOAL_RATE)} mincí za minutu hry. Obrat se počítá z posledních 3 minut.`],[
-    'Spread two fingers to zoom in, pinch to zoom out, twist to turn the view. The <b>Pointer</b> builds nothing, so you can look around safely.',
+    'Spread two fingers to zoom in, pinch to zoom out, twist to turn the view. The icons on the right start building; <b>Done</b> ends it so you can look around safely.',
     'Tracks start at a station or at track you already own. Tap České Budějovice, then Prague. Then tap Lipno and České Budějovice. The new line joins up by itself.',
     'In <b>Trains</b> put together a consist: a locomotive and 1 to 8 wagons. Passenger coaches for tourists, tank wagons for water. You can mix wagons.',
     'Set a route, for example Lipno → Č. Budějovice → Praha, and a timetable: when the train leaves and how often.',
@@ -2414,7 +2525,7 @@ function showIntro(resumed){
     '<b>Mind your coins.</b> Early on, cheap lines carrying people and mail between nearby cities pay off fast. Wine and cars earn a lot but need expensive wagons, long lines and raw materials from several places. Build them first and you wait a long time for money.',
     'Tourist towns such as Český Krumlov, Valtice, Karlovy Vary, Kutná Hora and Telč mainly want tourists from the big cities.',
     `<b>Level goal:</b> every city at level 3/3 and an income of at least ${num(GOAL_RATE)} coins per game minute. Income is measured over the last 3 minutes.`],[
-    'Zwei Finger spreizen zoomt hinein, zusammen heraus, Drehen dreht die Ansicht. Der <b>Zeiger</b> baut nichts, damit kannst du dich gefahrlos umsehen.',
+    'Zwei Finger spreizen zoomt hinein, zusammen heraus, Drehen dreht die Ansicht. Die Symbole rechts starten das Bauen; <b>Fertig</b> beendet es, dann kannst du dich gefahrlos umsehen.',
     'Gleise beginnen an einem Bahnhof oder an einer Strecke, die du schon hast. Tippe auf Č. Budějovice und dann auf Praha. Danach auf Lipno und Č. Budějovice. Die Strecke verbindet sich von selbst.',
     'Unter <b>Züge</b> stellst du einen Zug zusammen: Lok und 1 bis 8 Wagen. Personenwagen für Touristen, Kesselwagen für Wasser. Wagen lassen sich mischen.',
     'Lege eine Strecke fest, etwa Lipno → Č. Budějovice → Praha, und einen Fahrplan: wann der Zug abfährt und wie oft.',
@@ -2423,6 +2534,10 @@ function showIntro(resumed){
     '<b>Rechne mit deinen Münzen.</b> Am Anfang lohnen sich günstige Verbindungen mit Personen und Post zwischen nahen Städten. Wein und Autos bringen viel, brauchen aber teure Wagen, lange Strecken und Rohstoffe von mehreren Orten. Wer sie zuerst baut, wartet lange auf Geld.',
     'Ausflugsorte wie Český Krumlov, Valtice, Karlovy Vary, Kutná Hora und Telč wollen vor allem Touristen aus den großen Städten.',
     `<b>Levelziel:</b> alle Städte auf Stufe 3/3 und ein Umsatz von mindestens ${num(GOAL_RATE)} Münzen pro Spielminute. Gemessen über die letzten 3 Minuten.`]);
+}
+function showIntro(resumed){
+  if(resumed){ openSheet(`${langChips()}<span class="eyebrow">${L('Vítej zpátky','Welcome back','Willkommen zurück')}</span><h2>${L('Pokračujeme v Česku','Back to Czechia','Weiter in Tschechien')}</h2><p>${L('Tratě, vlaky, jízdní řády i skóre jsou nahrané tak, jak jsi je nechal.','Your lines, trains, timetables and score are just as you left them.','Strecken, Züge, Fahrpläne und Punkte sind so geladen, wie du sie verlassen hast.')}</p><div class="actions"><button class="btn" data-close>${L('Hrát','Play','Spielen')}</button></div>`,'intro'); return; }
+  const items = introItems();
   openSheet(`${langChips()}<span class="eyebrow">${L('Level 1 z 50','Level 1 of 50','Level 1 von 50')}</span><h2>${L('Česko','Czechia','Tschechien')}</h2>
   <p>${L(`Praha je na úrovni 1/3 a potřebuje <b>turisty</b> a <b>vodu</b>. Máš ${fmtK(START_MONEY)}.`,`Prague is at level 1/3 and needs <b>tourists</b> and <b>water</b>. You have ${fmtK(START_MONEY)}.`,`Prag ist auf Stufe 1/3 und braucht <b>Touristen</b> und <b>Wasser</b>. Du hast ${fmtK(START_MONEY)}.`)}</p>
   <ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol>
@@ -2543,7 +2658,7 @@ const saveStateEl=$('saveState');
 let playerView={name:['Hráč','Player','Spieler'],line:['Připojuji…','Connecting…','Verbinde…'],ok:false};
 function setPlayer(name, photo, line, ok){ playerView={name,line,ok}; if(photo) $('avatar').src=photo; paintPlayer(); }
 function setSave(line, ok){ playerView.line=line; playerView.ok=ok; paintPlayer(); }
-function paintPlayer(){ $('playerName').textContent=tx(playerView.name); saveStateEl.textContent=tx(playerView.line); saveStateEl.className=playerView.ok?'ok':''; }
+function paintPlayer(){ setTimeout(renderMenu,0); $('playerName').textContent=tx(playerView.name); saveStateEl.textContent=tx(playerView.line); saveStateEl.className=playerView.ok?'ok':''; }
 function snapshotState(){
   return { v:7, base:BASE_NODES, money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
     nodes:nodes.slice(BASE_NODES).map(n=>[Math.round(n.x*10)/10,Math.round(n.y*10)/10]),
@@ -2597,7 +2712,7 @@ async function initAccount(){
     try{ db.collection('scores').orderBy('score','desc').limit(20).onSnapshot(s=>{ board=s.docs.map(d=>({id:d.id,...d.data()})); boardMsg=board.length?'':['Zatím nikdo nehrál. Buď první!','Nobody has played yet. Be the first!','Noch hat niemand gespielt. Sei der Erste!']; if(!$('levelsView').hidden) renderLevels(); }, ()=>{ boardMsg=['Žebříček teď není dostupný.','The leaderboard is not available right now.','Die Rangliste ist gerade nicht verfügbar.']; }); }catch(e){}
   } else if(window.FIREBASE_CONFIG){ setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); boardMsg=['Žebříček uvidíš po přihlášení přes Google.','Sign in with Google to see the leaderboard.','Melde dich mit Google an, um die Rangliste zu sehen.']; initFirebase(window.FIREBASE_CONFIG); }
   else { setPlayer(['Hráč','Player','Spieler'],null,['Ukládá se v zařízení','Saved on this device','Auf dem Gerät gespeichert'],false); boardMsg=['Žebříček je dostupný po přihlášení. Teď se postup ukládá jen v tomto zařízení.','The leaderboard is available after signing in. Right now progress is saved on this device only.','Die Rangliste gibt es nach der Anmeldung. Jetzt wird nur auf diesem Gerät gespeichert.']; }
-  ready=true; introResumed=restored; showIntro(restored);
+  ready=true; introResumed=restored; if(window.__TEST) return; openMenu('main');
 }
 const FB_VER='10.12.2';
 const loadScript=src=>new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
@@ -2645,13 +2760,88 @@ function applyStatic(){
   document.querySelectorAll('[data-i18n]').forEach(el=>{ const v=STATIC_TEXT[el.dataset.i18n]; if(v) el.textContent=L(...v); });
   const aria={sndBtn:['Zvuk zapnout nebo vypnout','Sound on or off','Ton an oder aus'],rotL:['Otočit pohled doleva','Turn view left','Ansicht nach links drehen'],rotR:['Otočit pohled doprava','Turn view right','Ansicht nach rechts drehen'],compass:['Sever nahoru','North up','Norden nach oben'],speed:['Rychlost hry','Game speed','Spieltempo'],zin:['Přiblížit','Zoom in','Hineinzoomen'],zout:['Oddálit','Zoom out','Herauszoomen'],undoBtn:['Vrátit poslední krok','Undo last step','Letzten Schritt zurücknehmen'],playerBtn:['Hráč a ukládání','Player and saving','Spieler und Speichern'],cv:['3D mapa České republiky s tratěmi','3D map of Czechia with railway lines','3D-Karte Tschechiens mit Strecken']};
   for(const id in aria){ const el=$(id); if(el) el.setAttribute('aria-label',L(...aria[id])); }
+  $('doneBtn').firstElementChild.textContent=L('Hotovo','Done','Fertig'); $('advFace').setAttribute('aria-label',L('Rada výpravčího','Dispatcher tip','Tipp vom Fahrdienstleiter'));
+  $('rotateTxt').textContent=L('Otoč telefon na šířku','Turn your phone sideways','Dreh das Handy quer'); $('rotateSkip').textContent=L('Hrát na výšku','Play upright','Hochkant spielen'); $('menuBtn').setAttribute('aria-label',L('Menu','Menu','Menü'));
 }
 function setLang(l){
-  LANG=l; try{ localStorage.setItem('zi-lang',l); }catch(e){}
+  LANG=l; setTimeout(renderMenu,0); try{ localStorage.setItem('zi-lang',l); }catch(e){}
   applyStatic(); lastClock=''; renderClock(); setMoney(money); addScore(0); paintPlayer(); renderUndo(); renderNeeds(); setTool(tool); SITES.forEach(refreshLabel);
   if(!$('plansView').hidden) renderPlans(true); if(!$('levelsView').hidden) renderLevels();
   const k=sheetKind; if(k==='intro') showIntro(introResumed); else if(k==='player') $('playerBtn').click(); else if(k==='goal') goalSheet(); else if(k==='trains') showTrains(); else if(k==='editor') openSheet(edHtml(),'editor',true); else if(k) closeSheet();
 }
+/* ================= main menu ================= */
+const menuEl=$('menu'), menuBody=$('menuBody'); let menuView='main', menuStarted=false;
+let fsWanted=true; try{ fsWanted=localStorage.getItem('zi-fs')!=='0'; }catch(e){}
+const hasProgress=()=>trains.length>0 || [...edges.values()].some(e=>!e.internal);
+function goFullscreen(){ const el=document.documentElement; if(!fsWanted || document.fullscreenElement || !el.requestFullscreen) return lockLand();
+  el.requestFullscreen({navigationUI:'hide'}).then(lockLand).catch(()=>{}); }
+function lockLand(){ try{ screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(()=>{}); }catch(e){} }
+function openMenu(v){ menuView=v||'main'; menuEl.hidden=false; closeSheet(); renderMenu(); }
+function closeMenu(){ menuEl.hidden=true; checkRotate(); }
+const mb=(act,icon,title,sub,cls)=>`<button class="mbtn ${cls||''}" data-m="${act}"><i aria-hidden="true">${icon}</i><span>${title}${sub?`<small>${sub}</small>`:''}</span></button>`;
+const backBtn=()=>`<button class="btn ghost small mback" data-m="main">← ${L('Zpět','Back','Zurück')}</button>`;
+function loginText(){ if(mode==='claude') return L('Hraješ pod svým účtem. Postup i skóre se ukládají samy.','You are playing with your account. Progress and score save automatically.','Du spielst mit deinem Konto. Fortschritt und Punkte werden automatisch gespeichert.');
+  if(mode==='firebase') return L(`Přihlášen přes Google jako ${esc(myName)}. Postup se ukládá k účtu, pokračuješ i na jiném zařízení.`,`Signed in with Google as ${esc(myName)}. Progress is saved to your account, so you can continue on another device.`,`Mit Google angemeldet als ${esc(myName)}. Der Fortschritt liegt im Konto, du kannst auf einem anderen Gerät weiterspielen.`);
+  return L('Nejsi přihlášený. Postup se ukládá jen v tomto zařízení. Po přihlášení přes Google se uloží k účtu a skóre půjde do žebříčku.','Not signed in. Progress is saved on this device only. Sign in with Google to save it to your account and join the leaderboard.','Nicht angemeldet. Der Fortschritt wird nur auf diesem Gerät gespeichert. Mit Google-Anmeldung landet er im Konto und in der Rangliste.'); }
+function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h='';
+  $('menuSub').textContent=L('Level 1 · Česko','Level 1 · Czechia','Level 1 · Tschechien');
+  if(menuView==='main'){
+    if(prog||menuStarted) h+=mb('continue','▶',menuStarted?L('Pokračovat','Resume','Weiterspielen'):L('Pokračovat ve hře','Continue game','Spiel fortsetzen'),`${num(score)} ${L('bodů','points','Punkte')} · ${fmtK(money)}`,'primary')+mb('new','✚',L('Nová hra','New game','Neues Spiel'),L('začít od začátku','start from scratch','von vorn beginnen'));
+    else h+=mb('new','▶',L('Nová hra','New game','Neues Spiel'),L('postav první trať','build your first line','baue deine erste Strecke'),'primary');
+    h+=mb('login','👤',L('Přihlášení','Sign in','Anmeldung'), mode==='local'?L('Google účet','Google account','Google-Konto'):esc(myName||L('přihlášen','signed in','angemeldet')));
+    h+=mb('settings','⚙',L('Nastavení','Settings','Einstellungen'),L('zvuk, jazyk, ovládání, reset','sound, language, controls, reset','Ton, Sprache, Steuerung, Reset'));
+    h+=mb('rules','📖',L('Pravidla','Rules','Regeln'),L('jak se hraje','how to play','so wird gespielt'));
+    if(prog) h+=`<div class="mrow"><button class="btn ghost small" data-m="plans">${L('Jízdní řády','Timetables','Fahrpläne')}</button><button class="btn ghost small" data-m="levels">${L('Levely a žebříček','Levels and leaderboard','Level und Rangliste')}</button></div>`;
+    h+=`<div class="mfoot"><img src="${$('avatar').src}" alt=""><span>${esc(tx(playerView.name))} · ${esc(tx(playerView.line))}</span></div>`; }
+  else if(menuView==='newconfirm'){ h=`${backBtn()}<h2>${L('Začít novou hru?','Start a new game?','Neues Spiel beginnen?')}</h2><p>${L('Všechny tratě, vlaky, peníze a skóre se smažou. Nejde to vrátit.','All lines, trains, coins and score will be deleted. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht. Das lässt sich nicht rückgängig machen.')}</p>`+mb('newgo','✚',L('Ano, nová hra','Yes, new game','Ja, neues Spiel'),'','danger')+mb('main','←',L('Ne, zpět','No, go back','Nein, zurück')); }
+  else if(menuView==='login'){ h=`${backBtn()}<h2>${L('Přihlášení','Sign in','Anmeldung')}</h2><p>${loginText()}</p>
+      <div class="stats"><div><b>${num(score)}</b><small>${L('skóre','score','Punkte')}</small></div><div><b>${deliveries}</b><small>${L('dodávek','deliveries','Lieferungen')}</small></div><div><b>${crashes}</b><small>${L('srážek','crashes','Unfälle')}</small></div></div>`;
+    if(mode==='firebase') h+=mb('glogout','⎋',L('Odhlásit se','Sign out','Abmelden'));
+    else if(mode==='local') h+=mb('glogin','G',L('Přihlásit přes Google','Sign in with Google','Mit Google anmelden'),'','primary');
+    h+=`<p class="sub">${L('Skóre: 10 bodů za dodávku, 100 až 300 za postup města, 500 za splnění levelu a −50 za srážku.','Score: 10 points per delivery, 100 to 300 when a city levels up, 500 for completing the level and −50 per crash.','Punkte: 10 pro Lieferung, 100 bis 300 für den Aufstieg einer Stadt, 500 für das Level und −50 pro Unfall.')}</p>`; }
+  else if(menuView==='settings'){ h=`${backBtn()}<h2>${L('Nastavení','Settings','Einstellungen')}</h2>
+      <h3>${L('Zvuk','Sound','Ton')}</h3>
+      <div class="toggle"><span>${L('Zvuky hry','Game sounds','Spielgeräusche')}</span><button class="sw" role="switch" aria-checked="${SND.on}" data-m="snd" aria-label="${L('Zvuky hry','Game sounds','Spielgeräusche')}"></button></div>
+      <label class="toggle"><span>${L('Hlasitost','Volume','Lautstärke')}</span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.vol*100)}" id="volRange"></label>
+      <h3>${L('Jazyk','Language','Sprache')}</h3>${langChips()}
+      <h3>${L('Obrazovka','Screen','Bildschirm')}</h3>
+      <div class="toggle"><span>${L('Celá obrazovka na šířku','Full screen, landscape','Vollbild quer')}</span><button class="sw" role="switch" aria-checked="${fsWanted}" data-m="fs" aria-label="${L('Celá obrazovka','Full screen','Vollbild')}"></button></div>
+      <h3>${L('Ovládání','Controls','Steuerung')}</h3><div class="stopchips"><button class="schip ${zoomInvert?'':'on'}" data-m="zoom0">${L('Prsty od sebe přiblíží','Fingers apart zoom in','Finger auseinander zoomt hinein')}</button><button class="schip ${zoomInvert?'on':''}" data-m="zoom1">${L('Prsty od sebe oddálí','Fingers apart zoom out','Finger auseinander zoomt heraus')}</button></div>
+      <h3>${L('Hra','Game','Spiel')}</h3>`+mb('reset','↺',L('Resetovat hru','Reset game','Spiel zurücksetzen'),L('smaže tratě, vlaky a skóre','deletes lines, trains and score','löscht Strecken, Züge und Punkte'),'danger'); }
+  else if(menuView==='rules'){ h=`${backBtn()}<h2>${L('Pravidla','Rules','Regeln')}</h2>
+      <p>${L(`Propoj Česko železnicí a vozi městům, co potřebují. Začínáš s ${fmtK(START_MONEY)}.`,`Connect Czechia by rail and bring cities what they need. You start with ${fmtK(START_MONEY)}.`,`Verbinde Tschechien per Bahn und bring den Städten, was sie brauchen. Du startest mit ${fmtK(START_MONEY)}.`)}</p>
+      <ol>${introItems().map(x=>`<li>${x}</li>`).join('')}
+      <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
+      <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
+      <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerHour} mincí za herní hodinu, ta trvá minutu.`,`A wagon earns by cargo and distance. Running costs ${COST.runPerHour} coins per game hour, which lasts a minute.`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerHour} Münzen pro Spielstunde, die eine Minute dauert.`)}</p>`; }
+  else if(menuView==='resetconfirm'){ h=`${backBtn()}<h2>${L('Resetovat hru?','Reset the game?','Spiel zurücksetzen?')}</h2><p>${L('Smažou se všechny tratě, vlaky, peníze i skóre a level začne znovu. Nejde to vrátit.','All lines, trains, coins and score are deleted and the level starts over. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht und das Level beginnt neu. Das lässt sich nicht rückgängig machen.')}</p>`+mb('resetgo','↺',L('Ano, resetovat','Yes, reset','Ja, zurücksetzen'),'','danger')+mb('settings','←',L('Ne, zpět','No, go back','Nein, zurück')); }
+  menuBody.innerHTML=h; }
+function startPlaying(fresh){ closeMenu(); menuStarted=true; goFullscreen(); sndInit(); if(fresh) showIntro(false); else showHint(HINTS[tool]()); }
+menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.lang){ setLang(b.dataset.lang); return; }
+  const m=b.dataset.m; if(!m) return;
+  if(m==='continue') startPlaying(false);
+  else if(m==='new'){ if(hasProgress()){ menuView='newconfirm'; renderMenu(); } else startPlaying(true); }
+  else if(m==='newgo'){ resetGame(); startPlaying(true); }
+  else if(m==='resetgo'){ resetGame(); menuView='main'; renderMenu(); }
+  else if(m==='reset'){ menuView='resetconfirm'; renderMenu(); }
+  else if(m==='glogin'){ if(!window.FIREBASE_CONFIG) closeMenu(); googleLogin(); }
+  else if(m==='glogout'){ googleLogout(); }
+  else if(m==='snd') $('sndBtn').click();
+  else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
+  else if(m==='zoom0'||m==='zoom1'){ zoomInvert=m==='zoom1'; try{ localStorage.setItem('zi-zoom2',zoomInvert?'1':'0'); }catch(e){} renderMenu(); }
+  else if(m==='plans'||m==='levels'){ closeMenu(); menuStarted=true; showTab(m); }
+  else { menuView=m; renderMenu(); } });
+menuEl.addEventListener('input',e=>{ if(e.target.id==='volRange'){ SND.vol=e.target.value/100; try{ localStorage.setItem('zi-vol',String(SND.vol)); }catch(er){} sndInit(); sndApply(); } });
+$('menuBtn').onclick=()=>openMenu('main');
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!menuEl.hidden && menuStarted && menuView==='main') closeMenu(); else if(menuEl.hidden && sheet.hidden) openMenu('main'); } });
+// a short note about the picked tool, then it gets out of the way
+let hintT; function showHint(t){ const el=$('hint'); el.textContent=t; el.classList.add('show'); clearTimeout(hintT); hintT=setTimeout(()=>el.classList.remove('show'),7000); }
+// phones held upright get a nudge to turn sideways
+let rotateSkip=false; try{ rotateSkip=sessionStorage.getItem('zi-rot')==='1'; }catch(e){}
+function checkRotate(){ const small=Math.min(innerWidth,innerHeight)<600, portrait=innerHeight>innerWidth*1.1; $('rotateHint').hidden=!(small && portrait && !rotateSkip && menuEl.hidden); }
+$('rotateSkip').onclick=()=>{ rotateSkip=true; try{ sessionStorage.setItem('zi-rot','1'); }catch(e){} checkRotate(); };
+addEventListener('resize',checkRotate); screen.orientation && screen.orientation.addEventListener && screen.orientation.addEventListener('change',checkRotate);
 function resetGame(){ clearWorld(); consumers.forEach(refreshLabel); setMoney(money); addScore(0); rebuildTracks(); renderNeeds(); save(); toast(L('Level začíná znovu.','Level restarted.','Level neu gestartet.')); }
 
 /* ================= loop ================= */
@@ -2661,7 +2851,8 @@ const v3=new T.Vector3();
 // The listener is the point the camera looks at. Zoomed out you hear a quiet mix of everything,
 // zoom in on a city, a train or the Škoda works and that sound comes up.
 const SND={ ctx:null, on:true, voices:[], trainV:[], ready:false };
-try{ SND.on = localStorage.getItem('zi-sound')!=='0'; }catch(e){}
+SND.vol=0.8; try{ SND.on = localStorage.getItem('zi-sound')!=='0'; const v=localStorage.getItem('zi-vol'); if(v!==null) SND.vol=Math.max(0,Math.min(1,+v)); }catch(e){}
+function sndApply(){ if(SND.master) SND.master.gain.setTargetAtTime(SND.on?0.9*SND.vol:0,SND.ctx.currentTime,0.05); }
 function sndBtnPaint(){ const b=$('sndBtn'); if(b){ b.textContent=SND.on?'🔊':'🔇'; b.setAttribute('aria-pressed',String(SND.on)); } }
 function noiseBuf(ctx,kind){ const n=ctx.sampleRate*3, b=ctx.createBuffer(1,n,ctx.sampleRate), d=b.getChannelData(0); let last=0, b0=0,b1=0,b2=0;
   for(let i=0;i<n;i++){ const w=Math.random()*2-1;
@@ -2673,7 +2864,7 @@ function loopSrc(buf){ const s=SND.ctx.createBufferSource(); s.buffer=buf; s.loo
 function sndInit(){
   if(SND.ctx){ if(SND.ctx.state==='suspended') SND.ctx.resume(); return; }
   const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
-  const ctx=SND.ctx=new AC(); SND.master=ctx.createGain(); SND.master.gain.value=SND.on?0.9:0;
+  const ctx=SND.ctx=new AC(); SND.master=ctx.createGain(); SND.master.gain.value=SND.on?0.9*SND.vol:0;
   const comp=ctx.createDynamicsCompressor(); SND.master.connect(comp); comp.connect(ctx.destination);
   SND.white=noiseBuf(ctx,'white'); SND.brown=noiseBuf(ctx,'brown'); SND.pink=noiseBuf(ctx,'pink');
   // wind over the countryside, always there, louder when zoomed out
@@ -2760,7 +2951,7 @@ setInterval(()=>{ if(!SND.ready || !SND.on) return;
 
 function frame(now){
   const real=Math.min(0.05,(now-last)/1000); last=now;
-  const dt=real*SPEEDS[speedIdx]; const n=Math.ceil(dt/0.25); for(let i=0;i<n;i++) step(dt/n);
+  const dt=menuEl.hidden ? real*SPEEDS[speedIdx] : 0; const n=Math.ceil(dt/0.25); for(let i=0;i<n;i++) step(dt/n);
   renderClock(); applyDaylight(); if(tool==='route' && rStops.length>1 && Math.abs(camD/routeZoom-1)>0.25) renderRoute();
   for(const tr of trains) placeTrain(tr,now,real);
   planeTick(real);
