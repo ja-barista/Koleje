@@ -443,6 +443,8 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .split .step .n small{display:inline;font-size:12px}
 .split .autob{font-size:12px!important;min-width:auto!important;padding:0 8px;height:28px!important}
 .split .autot{font-style:normal;font-size:12px;font-weight:800;color:var(--leaf)}
+body:not(.tut) .advisor{display:none}
+.tut .advisor .hint b{color:var(--berry)}
 @media (prefers-reduced-motion:reduce){ .rotate svg{animation:none} }
 </style>
 
@@ -930,6 +932,7 @@ const EVERY=[24,12,8,6,4,3,2];
 /* ================= map ================= */
 const P = (lon,lat) => [(lon-12)*100*SC, (51.15-lat)*155*SC];
 const BORDER = [[12.09,50.25],[12.5,50.40],[12.95,50.42],[13.4,50.63],[13.9,50.79],[14.3,50.88],[14.4,51.02],[14.8,50.87],[15.0,51.0],[15.4,50.79],[16.0,50.63],[16.3,50.66],[16.45,50.43],[16.9,50.45],[17.0,50.22],[17.2,50.38],[17.7,50.32],[17.75,50.08],[18.0,50.0],[18.4,49.98],[18.6,49.9],[18.85,49.52],[18.4,49.3],[18.15,49.27],[17.8,48.92],[17.2,48.87],[16.95,48.62],[16.5,48.8],[16.0,48.75],[15.25,49.0],[14.95,48.97],[14.7,48.6],[14.3,48.56],[13.85,48.77],[13.5,48.95],[13.0,49.3],[12.6,49.5],[12.45,49.7],[12.55,49.95],[12.2,50.1]].map(p => P(p[0],p[1]));
+if(typeof localStorage!=='undefined'){ try{ if(localStorage.getItem('zi-level')==='tut') BORDER.splice(0,BORDER.length,...[[14.62,50.24],[15.2,50.3],[16.38,50.22],[16.42,49.7],[16.3,49.36],[15.4,49.32],[14.6,49.4],[14.55,49.8]].map(p=>P(p[0],p[1]))); }catch(e){} }
 const CX = 350*SC, CZ = 207*SC;
 function inPoly(x,y){ let ins=false; for(let i=0,j=BORDER.length-1;i<BORDER.length;j=i++){ const [xi,yi]=BORDER[i],[xj,yj]=BORDER[j]; if(((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins; } return ins; }
 const G = 30;
@@ -982,6 +985,21 @@ const SITES = [
   {id:'mikulov', name:'Mikulov', ll:[16.56,48.82], kind:'factory', plat:1, makes:{out:'vino', inp:['sklo'], every:15}, desc:['Vinařství na jižní Moravě. Hrozny má svoje, na láhve potřebuje sklo z Nového Boru.','Winery in South Moravia. It grows its own grapes but needs glass from Nový Bor for bottles.','Weingut in Südmähren. Die Trauben hat es selbst, für die Flaschen braucht es Glas aus Nový Bor.']},
   {id:'mb', name:'Mladá Boleslav', ll:[14.9,50.41], kind:'factory', plat:2, makes:{out:'auta', inp:['pracovnici','pneu','ocel'], every:15}, desc:['Škodovka, jeden z hlavních vývozních artiklů Česka. Auto vyrobí jen z dovezených dílů: pracovníci z měst, pneumatiky z Otrokovic a ocel z Třince (ta se dělá z uhlí z Karviné nebo Ostravy). Dokud všechno nedovezeš, auta nebudou.','The Škoda works, one of Czechia’s main exports. It builds cars only from delivered parts: workers from the cities, tyres from Otrokovice and steel from Třinec (made from coal from Karviná or Ostrava). No deliveries, no cars.','Das Škoda-Werk, einer der wichtigsten Exportartikel Tschechiens. Autos entstehen nur aus gelieferten Teilen: Arbeiter aus den Städten, Reifen aus Otrokovice und Stahl aus Třinec (aus Kohle aus Karviná oder Ostrava). Ohne Lieferungen keine Autos.']}
 ];
+// ===== tutorial: a small invented land with two towns and what they need =====
+const TUT = (()=>{ try{ return localStorage.getItem('zi-level')==='tut'; }catch(e){ return false; } })();
+if(TUT){
+  SITES.splice(0,SITES.length,
+    {id:'velkov', name:'Velkov', ll:[15.18,49.86], kind:'city', size:14, plat:3, prod:{turiste:20,posta:25},
+      desc:['Větší město. Nejdřív chce vodu, potom pivo a poštu.','The bigger town. First it wants water, then beer and mail.','Die größere Stadt. Zuerst will sie Wasser, dann Bier und Post.'],
+      levels:[{voda:3},{pivo:3,posta:2}]},
+    {id:'malkov', name:'Malkov', ll:[15.88,49.68], kind:'city', size:10, plat:3, prod:{turiste:20,posta:25},
+      desc:['Menší město. Chce turisty z Velkova, potom obilí a vodu.','The smaller town. It wants tourists from Velkov, then grain and water.','Die kleinere Stadt. Sie will Touristen aus Velkov, dann Getreide und Wasser.'],
+      levels:[{turiste:3},{obili:3,voda:2}]},
+    {id:'pramen', art:'lipno', name:'Pramen', ll:[15.0,49.6], kind:'zone', plat:1, prod:{voda:20}, desc:['Horský pramen. Odsud se vozí voda.','A mountain spring. Water comes from here.','Eine Bergquelle. Von hier kommt Wasser.']},
+    {id:'statek', art:'hana', name:'Statek', ll:[16.0,49.97], kind:'zone', plat:1, prod:{obili:15}, desc:['Statek s poli. Pěstuje obilí.','A farm with fields. It grows grain.','Ein Bauernhof mit Feldern. Er baut Getreide an.']},
+    {id:'chmelnice', art:'zatec', name:'Chmelnice', ll:[15.45,50.06], kind:'factory', plat:1, makes:{out:'chmel', inp:['voda'], every:15}, desc:['Chmelnice. Chmel roste, jen když dostane vodu.','A hop garden. Hops only grow when they get water.','Ein Hopfengarten. Hopfen wächst nur mit Wasser.']},
+    {id:'pivovar', art:'plzen', name:'Pivovar', ll:[15.52,49.58], kind:'factory', plat:1, makes:{out:'pivo', inp:['chmel','obili'], every:15}, desc:['Pivovar. Uvaří pivo z chmele a obilí.','A brewery. It brews beer from hops and grain.','Eine Brauerei. Sie braut Bier aus Hopfen und Getreide.']});
+}
 const nodeSite = new Map(), portOf = new Map();
 for (const s of SITES){ const [x,y]=P(s.ll[0],s.ll[1]); s.node=addNode(x,y); nodeSite.set(s.node,s); }
 function initSiteState(s){
@@ -1043,6 +1061,7 @@ const RIVERS = [
   [[16.1,49.6],[16.5,49.3],[16.6,49.1],[16.65,48.85]],
   [[15.4,48.98],[15.9,48.85],[16.5,48.78],[16.95,48.62]]
 ].map(r => r.map(p => P(p[0],p[1])));
+if(TUT){ RIVERS.splice(0,RIVERS.length,[[15.3,50.3],[15.36,49.95],[15.62,49.78],[16.05,49.52],[16.3,49.3]].map(p=>P(p[0],p[1]))); MOUNTAINS.splice(0,MOUNTAINS.length); }
 const riverSegs = []; RIVERS.forEach(r => { for(let i=0;i<r.length-1;i++) riverSegs.push([r[i],r[i+1]]); });
 
 /* ================= state & graph ================= */
@@ -1078,7 +1097,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const kolej=n=> L(n===1?'kolej':(n<5?'koleje':'kolejí'), n===1?'track':'tracks', n===1?'Gleis':'Gleise');
 let lastClock='';
 function renderClock(){ const m=Math.floor(gameMin); const day=Math.floor(m/1440)+1;
-  const s=`${L('Česko','Czechia','Tschechien')} · ${L('den','day','Tag')} ${day}|${hm(m)}`; if(s===lastClock) return; lastClock=s;
+  const s=`${TUT?L('Tutoriál','Tutorial','Tutorial'):L('Česko','Czechia','Tschechien')} · ${L('den','day','Tag')} ${day}|${hm(m)}`; if(s===lastClock) return; lastClock=s;
   $('lvlLabel').textContent=s.split('|')[0]; $('clockTxt').textContent=hm(m); const mm=m%1440, h=mm/60;
   $('hHand').style.transform=`rotate(${(h%12)*30}deg)`; $('mHand').style.transform=`rotate(${(mm%60)*6}deg)`; $('stclock').setAttribute('aria-label',hm(m));
   $('dayPart').textContent = h<5||h>=21 ? L('noc','night','Nacht') : h<9 ? L('ráno','morning','Morgen') : h<17 ? L('den','day','Tag') : L('večer','evening','Abend'); }
@@ -1123,7 +1142,7 @@ function pathLen(p){ let L=0; for(let i=0;i<p.length-1;i++) L+=dist(p[i],p[i+1])
 
 /* ================= production & demand ================= */
 const LV_WIN=600, LV_NEED=5, LV_KEEP=2;   // 600 game minutes = 10 real minutes at 1×
-SITES.forEach(s=>{ if(s.levels) s.levels=s.levels.map(o=>Object.fromEntries(Object.keys(o).map(k=>[k,LV_NEED]))); });
+SITES.forEach(s=>{ if(s.levels) s.levels=s.levels.map(o=>Object.fromEntries(Object.keys(o).map(k=>[k,TUT?3:LV_NEED]))); });
 const levelTop = s => s.done ? s.levels.length-1 : s.lvl;
 function levelWants(s,c){ for(let k=0;k<=levelTop(s);k++) if(s.levels[k][c]!==undefined) return true; return false; }
 function levelGoods(s){ const out=[]; for(let k=0;k<=levelTop(s);k++) for(const c of Object.keys(s.levels[k])) if(!out.includes(c)) out.push(c); return out; }
@@ -1153,7 +1172,7 @@ function produce(dt){
   }
 }
 /* ----- level goal: every city happy + income per minute ----- */
-const GOAL_RATE=5000, RATE_WIN=180;   // coins per game hour (= one real minute), averaged over 3 game hours
+const GOAL_RATE=TUT?1000:5000, RATE_WIN=180;   // coins per game hour (= one real minute), averaged over 3 game hours
 let incomeLog=[], goalHit=false, curRate=0;
 function logIncome(v){ incomeLog.push([gameMin,v]); }
 function incomeRate(){ const t0=gameMin-RATE_WIN; while(incomeLog.length && incomeLog[0][0]<t0) incomeLog.shift(); return Math.round(incomeLog.reduce((a,x)=>a+x[1],0)/(RATE_WIN/60)); }
@@ -1528,7 +1547,7 @@ function autoJunctions(act){
       if(s<0 || signals.has(s)) continue;
       signals.add(s); act.sigs.push(s); cost+=COST.signal; n++; } }
   if(n){ netVer++; setMoney(money-cost); act.amount+=cost; rebuildSignals();
-    toast(L(`Na odbočce je výhybka a ${n}× návěstidlo (${fmtK(cost)}), aby se vlaky nesrazily.`,`The junction got a switch and ${n} signal${n>1?'s':''} (${fmtK(cost)}) so trains cannot collide.`,`Die Abzweigung hat eine Weiche und ${n} Signal${n>1?'e':''} (${fmtK(cost)}) bekommen, damit keine Züge zusammenstoßen.`),'good'); }
+    /*quiet*/ }
   return cost;
 }
 const isTrackNode = id => !nodeSite.has(id) && !portOf.has(id);
@@ -1569,8 +1588,8 @@ function planBuildWith(A,B,sp0,ep0,kf,bend){
   else if(B.kind==='node'){ E={id:B.id}; const n=nodes[B.id]; eDir=bestDir(arriveDirs(B.id),unit(sp.x,sp.y,n.x,n.y)); }
   else if(B.kind==='edge'){ E={edge:B}; eDir=edgeDir(B,unit(sp.x,sp.y,B.x,B.y)); }
   else E={x:B.x,y:B.y};
-  const EP=ptPos(E), LS=A.kind==='station'?{x:sp.x+sDir[0]*30, y:sp.y+sDir[1]*30}:null, LE=B.kind==='station'?{x:EP.x-eDir[0]*30, y:EP.y-eDir[1]*30}:null;
-  if(LS) sp=LS; const ep=LE||EP, D=Math.hypot(ep.x-sp.x,ep.y-sp.y), c=Math.max(LEAD,D*kf);
+  const EP=ptPos(E), LS=A.kind==='station'?{x:sp.x+sDir[0]*14, y:sp.y+sDir[1]*14}:null, LE=B.kind==='station'?{x:EP.x-eDir[0]*14, y:EP.y-eDir[1]*14}:null;
+  if(LS) sp=LS; const ep=LE||EP, D=Math.hypot(ep.x-sp.x,ep.y-sp.y), c=Math.max(24,D*kf);
   const c1 = sDir ? {x:sp.x+sDir[0]*c, y:sp.y+sDir[1]*c} : {x:sp.x+(ep.x-sp.x)/3, y:sp.y+(ep.y-sp.y)/3};
   const c2 = eDir ? {x:ep.x-eDir[0]*c, y:ep.y-eDir[1]*c} : {x:ep.x-(ep.x-sp.x)/3, y:ep.y-(ep.y-sp.y)/3};
   if(bend){ const nx=-(ep.y-sp.y)/(D||1), ny=(ep.x-sp.x)/(D||1); for(const q of [c1,c2]){ q.x+=nx*bend*D; q.y+=ny*bend*D; } }   // swing out sideways to get round a station
@@ -1592,7 +1611,8 @@ function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unsh
     // keep lines off the rivers: cross them, do not run along them
     const L=Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y), n=Math.max(1,Math.round(L/8)); let wet=0; for(let k=0;k<n;k++){ const f=(k+0.5)/n; if(nearRiver(P[i].x+(P[i+1].x-P[i].x)*f, P[i].y+(P[i+1].y-P[i].y)*f, 10)) wet++; }
     cost+=wet*(L/n)*RATE*4; }
-  for(let i=1;i<P.length-1;i++){ const u=unit(P[i-1].x,P[i-1].y,P[i].x,P[i].y), v=unit(P[i].x,P[i].y,P[i+1].x,P[i+1].y); const d=dot2(u,v); if(d<TURN_MIN+0.05){ bad++; continue; } const th=Math.acos(Math.max(-1,Math.min(1,d))); if(th<0.02) continue; const l=Math.min(Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y),Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y)), R=l/th; if(R<22) bad++; else if(R<70) cost+=60*(70-R); }
+  for(let i=1;i<P.length-1;i++){ if((A.kind==='station'&&i===1)||(B.kind==='station'&&i===P.length-2)) continue;   // the platform end itself is straight
+    const u=unit(P[i-1].x,P[i-1].y,P[i].x,P[i].y), v=unit(P[i].x,P[i].y,P[i+1].x,P[i+1].y); const d=dot2(u,v); if(d<TURN_MIN+0.05){ bad++; continue; } const th=Math.acos(Math.max(-1,Math.min(1,d))); if(th<0.02) continue; const l=Math.min(Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y),Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y)), R=l/th; if(R<45) cost+=80*(45-R); }   // tight bends are allowed, just cost a little more
   if(A.kind==='node'||A.kind==='edge'){ const s=ptPos(pl[0]), q=ptPos(pl[1]), dirs=A.kind==='node'?contDirs(A.id):[edgeDir(A,unit(s.x,s.y,q.x,q.y))]; if(dirs.length && dirs[0] && Math.max(...dirs.map(d=>dot2(d,unit(s.x,s.y,q.x,q.y))))<0.5) bad++; }
   if(B.kind==='node'||B.kind==='edge'){ const e=ptPos(pl[pl.length-1]), q=ptPos(pl[pl.length-2]), w=unit(q.x,q.y,e.x,e.y), dirs=B.kind==='node'?arriveDirs(B.id):[edgeDir(B,w)]; if(dirs.length && dirs[0] && Math.max(...dirs.map(d=>dot2(d,w)))<0.5) bad++; }
   for(let i=i0;i<i1;i++) if(segHitsStation(P[i],P[i+1])) bad+=10;
@@ -1602,7 +1622,7 @@ function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unsh
 function planBuild(A,B){
   const so = A.kind==='station' ? (A.d!=null?[A.d]:[0,1]) : [null], eo = B.kind==='station' ? (B.d!=null?[B.d]:[0,1]) : [null];
   let best=null, bs=Infinity;
-  for(const a of so) for(const b of eo) for(const kf of [0.3,0.45,0.65,0.9,1.25]){ const pl=planBuildWith(A,B,a,b,kf,0), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
+  for(const a of so) for(const b of eo) for(const kf of [0.15,0.3,0.45,0.65,0.9,1.25]){ const pl=planBuildWith(A,B,a,b,kf,0), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   if(bs>=1e7) for(const a of so) for(const b of eo) for(const kf of [0.45,0.8]) for(const bend of [-0.6,-0.4,-0.25,0.25,0.4,0.6]){ const pl=planBuildWith(A,B,a,b,kf,bend), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   return best;
 }
@@ -1627,10 +1647,10 @@ function buildPoints(pts,act){
   const ids=pts.map(p=> p.id!=null ? p.id : (p.edge ? (edges.has(p.edge.k) ? splitEdge(p.edge.k,p.edge.x,p.edge.y,act) : addNode(p.edge.x,p.edge.y)) : addNode(p.x,p.y)));
   pts.forEach((p,i)=>{ if(p.fan && portOf.has(ids[i])) fanPorts.add(ids[i]); });
   let spent=0; for(let i=0;i<ids.length-1;i++) spent+=addSegment(ids[i],ids[i+1],act);
-  if(fly){ spent+=fly*FLY_COST; toast(L(`Trať přejede ${fly}× jinou trať po mostě (${fmtK(fly*FLY_COST)}).`,`The line crosses another line ${fly}× on a bridge (${fmtK(fly*FLY_COST)}).`,`Die Strecke überquert ${fly}× eine andere auf einer Brücke (${fmtK(fly*FLY_COST)}).`),'good'); }
+  if(fly){ spent+=fly*FLY_COST; /*quiet*/ }
   if(spent) sndBuild();
   setMoney(money-spent); act.amount+=spent; autoJunctions(act); addEntrySignals(act); rebuildTracks();
-  if(tunnel) toast(L('Trať vede tunelem pod horami. Kilometr v tunelu stojí 150 mincí.','The line runs through a tunnel under the mountains. A tunnel kilometre costs 150 coins.','Die Strecke führt durch einen Tunnel. Ein Tunnelkilometer kostet 150 Münzen.'));
+  /* tunnel: no message */
   return ids[ids.length-1];
 }
 function segDist(px,py,a,b){ const dx=b.x-a.x, dy=b.y-a.y; let t=((px-a.x)*dx+(py-a.y)*dy)/(dx*dx+dy*dy); t=Math.max(0,Math.min(1,t)); return Math.hypot(a.x+dx*t-px, a.y+dy*t-py); }
@@ -1840,7 +1860,7 @@ const IND={
     const k=building(20,0,10,10,12,{key:'kiln',base:'#f6ecd8',win:'#a9d6ff',frame:'#8b6b4a',roof:'#c96f52'},'pitch'); g.add(k); },
   hana(g){ for(let a=0;a<4;a++) g.add(mesh(box,mat(a%2?'#f7c948':'#e9b42c'),a*9-14,0.5,0,8,1,26,false)); for(let i=0;i<3;i++){ g.add(mesh(cyl,M.metal,18+i*7,8,-6,3,16,3)); g.add(mesh(cone,M.metal,18+i*7,17.5,-6,3.2,3,3.2)); } }
 };
-for(const s of SITES){ const f=IND[s.id]; if(!f) continue; const n=nodes[s.node], half=(s.plat-1)/2*PLAT_GAP;
+for(const s of SITES){ const f=IND[s.art||s.id]; if(!f) continue; const n=nodes[s.node], half=(s.plat-1)/2*PLAT_GAP;
   const cands= s.id==='letiste' ? [[0,half+70],[0,-half-90]] : s.id==='mb' ? [[0,half+60],[0,-half-70],[0,half+90]] : [[16,half+36],[16,-half-60],[-100,half+20],[96,half+20],[-30,half+70],[16,-half-100]];
   let [ox,oy]=toW(s,...cands[0]);
   for(const [cx,cy] of cands){ const [x,y]=toW(s,cx,cy); let ok=inPoly(x,y); for(let a=0;a<8 && ok;a++){ const px=x+Math.cos(a*Math.PI/4)*26, py=y+Math.sin(a*Math.PI/4)*26; if(inStation(px,py,2)) ok=false; }
@@ -1860,7 +1880,8 @@ function addField(s,lx,ly,w,d,kind,tilt){ const [x,y]=toW(s,lx,ly); if(!inPoly(x
     for(let j=-d/2+2.5;j<=d/2-2.5;j+=4.2){ g.add(mesh(box,leaf,0,1.3,j,w-5,2.2,1.4,false)); g.add(mesh(box,post,-w/2+2,1.4,j,0.4,2.8,0.4,false)); g.add(mesh(box,post,w/2-2,1.4,j,0.4,2.8,0.4,false)); } }
   scene.add(g); industryAt.push([x,y,Math.max(w,d)/2+4]);
   const c=Math.cos(rot), sn=Math.sin(rot); for(const t of trees){ const dx=t.x-x, dy=t.y-y, a=dx*c+dy*sn, b=-dx*sn+dy*c; if(Math.abs(a)<w/2+3 && Math.abs(b)<d/2+3) t.noShow=true; } }
-{ const z=site('zatec'), mk=site('mikulov'), va=site('valtice');
+if(TUT){ const ch=site('chmelnice'), st=site('statek'); addField(ch,-75,45,44,30,'hop',0.2); addField(ch,70,50,40,28,'hop',-0.15);  }
+if(!TUT){ const z=site('zatec'), mk=site('mikulov'), va=site('valtice');
   addField(z,-75,45,44,30,'hop',0.2); addField(z,70,50,40,28,'hop',-0.15); addField(z,-10,-80,48,26,'hop',0.05); addField(z,95,-40,34,24,'hop',0.3);
   addField(mk,-70,45,40,30,'vine',0.35); addField(mk,60,-55,36,28,'vine',-0.2); addField(mk,-55,-70,30,22,'vine',0.1);
   addField(va,75,45,36,26,'vine',-0.3); addField(va,-70,-50,34,26,'vine',0.25); }
@@ -1950,10 +1971,9 @@ function computeFlyovers(){ flyovers=[]; const es=[...edges.values()].filter(e=>
   for(let i=0;i<es.length;i++) for(let j=i+1;j<es.length;j++){ const a=es[i], b=es[j]; if(sharesNode(a,b)) continue;
     const A1=nodes[a.a],B1=nodes[a.b],A2=nodes[b.a],B2=nodes[b.b];
     if(Math.max(A1.x,B1.x)<Math.min(A2.x,B2.x)||Math.max(A2.x,B2.x)<Math.min(A1.x,B1.x)||Math.max(A1.y,B1.y)<Math.min(A2.y,B2.y)||Math.max(A2.y,B2.y)<Math.min(A1.y,B1.y)) continue;
-    const t=segX(A1,B1,A2,B2); if(t===null) continue; const up = Math.max(a.a,a.b)>Math.max(b.a,b.b) ? a : b, U1=nodes[up.a], U2=nodes[up.b];
-    const tu = up===a ? t : segX(A2,B2,A1,B1); if(tu===null) continue;
-    flyovers.push({e:up, t:tu, x:U1.x+(U2.x-U1.x)*tu, y:U1.y+(U2.y-U1.y)*tu, ang:Math.atan2(U2.y-U1.y,U2.x-U1.x)}); }
-  flyovers.forEach(traceFly); }
+    const t=segX(A1,B1,A2,B2); if(t===null) continue; const t2=segX(A2,B2,A1,B1); if(t2===null) continue;
+    const mk=(e,tt)=>{ const U1=nodes[e.a], U2=nodes[e.b], f={e, t:tt, x:U1.x+(U2.x-U1.x)*tt, y:U1.y+(U2.y-U1.y)*tt, ang:Math.atan2(U2.y-U1.y,U2.x-U1.x)}; traceFly(f); f.room=Math.min(-f.span[0],f.span[1]); return f; };
+    const fa=mk(a,t), fb=mk(b,t2); flyovers.push(fa.room>=fb.room ? fa : fb); } }
 // the raised part follows the line itself, through bends: a list of points with their distance s from the crossing
 function traceFly(f){ const e=f.e, X={x:f.x,y:f.y}; f.cuts=[]; f.nodes=[]; const half=[];
   for(const [dirEnd,other] of [[e.b,e.a],[e.a,e.b]]){ const pts=[]; let from=other, to=dirEnd, cur=X, s=0, dStart=Math.hypot(X.x-nodes[from].x,X.y-nodes[from].y);
@@ -1964,7 +1984,7 @@ function traceFly(f){ const e=f.e, X={x:f.x,y:f.y}; f.cuts=[]; f.nodes=[]; const
       from=to; to=nb[0]; cur=nodes[from]; dStart=0; }
     half.push(pts); }
   f.poly=[...half[1].slice().reverse().map(q=>({...q,s:-q.s})), {x:X.x,y:X.y,s:0}, ...half[0]]; f.span=[f.poly[0].s, f.poly[f.poly.length-1].s]; }
-const flyHeight=(f,s)=>{ const a=Math.abs(s), end=s<0?-f.span[0]:f.span[1], ramp=Math.max(8,end-FLY_DECK); return a<FLY_DECK ? FLY_H : FLY_H*Math.max(0,Math.min(1,(end-a)/ramp)); };
+const flyHeight=(f,s)=>{ const a=Math.abs(s), end=s<0?-f.span[0]:f.span[1]; return FLY_H*Math.max(0,Math.min(1,(end-a)/(FLY_HALF-FLY_DECK))); };   // never a cliff: short ramps simply stay lower
 function countNewCrossings(P){ let n=0; const es=[...edges.values()].filter(e=>!e.internal);
   for(let i=0;i<P.length-1;i++) for(const e of es){ const A=nodes[e.a],B=nodes[e.b]; if(Math.hypot(A.x-P[i].x,A.y-P[i].y)<1||Math.hypot(B.x-P[i].x,B.y-P[i].y)<1||Math.hypot(A.x-P[i+1].x,A.y-P[i+1].y)<1||Math.hypot(B.x-P[i+1].x,B.y-P[i+1].y)<1) continue; const t=segX(P[i],P[i+1],A,B); if(t!==null && t>0.01 && t<0.99) n++; }
   return n; }
@@ -2117,7 +2137,7 @@ function floatText(x,y,text,neg,k){ const el=document.createElement('div'); el.c
 
 /* ================= camera & input ================= */
 let W=0,H=0, camD=0, fitD=0, target={x:0,z:0};
-{ const a=nodes[site('praha').node], b=nodes[site('cb').node]; target.x=(a.x+b.x)/2-CX; target.z=(a.y+b.y)/2-CZ+30; }
+if(!TUT){ const a=nodes[site('praha').node], b=nodes[site('cb').node]; target.x=(a.x+b.x)/2-CX; target.z=(a.y+b.y)/2-CZ+30; }
 const MIN_D=80;
 const maxD = () => fitD*1.15;
 function pitchFor(d){ const f=Math.max(0,Math.min(1,(d-MIN_D)/(fitD*0.9-MIN_D))); return (34+f*26)*Math.PI/180; }
@@ -2375,7 +2395,7 @@ function routeDone(){ const ch=routeCheck(rStops,rPlats,rVias); if(!ch.ok){ toas
   if(!draft.consist.length) autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); }
 function routeOnMap(){ const d=draft; closeSheet(); setTool('route'); rDraft=d; rStops=[...d.route]; rPlats=d.plats?[...d.plats]:d.route.map(()=>null); rVias=d.vias?d.vias.map(a=>[...(a||[])]):d.route.map(()=>[]); renderRoute();
   showHint(L('Klepej na stanice v pořadí, kudy má vlak jet. Zpět o zastávku smaže poslední, Hotovo trasu uloží.','Tap the stations in the order the train should run. Remove last stop deletes the last one, Done saves the route.','Tippe die Bahnhöfe in Fahrtreihenfolge an. Letzten Halt entfernen löscht den letzten, Fertig speichert die Strecke.')); }
-$('advFace').onclick=()=>{ const h=$('hint'); if(h.classList.contains('show')){ h.classList.remove('show'); } else showHint(HINTS[tool]()); };
+$('advFace').onclick=()=>{ const h=$('hint'); h.classList.toggle('show'); };
 $('sndBtn').onclick=()=>{ SND.on=!SND.on; try{ localStorage.setItem('zi-sound',SND.on?'1':'0'); }catch(e){} sndInit(); sndApply(); sndBtnPaint(); renderMenu(); };
 $('speed').onclick=e=>{ speedIdx=(speedIdx+1)%SPEEDS.length; e.currentTarget.textContent=SPEED_LABEL[speedIdx]; };
 
@@ -2585,7 +2605,7 @@ function saveDraft(){
     const routeChanged = tr.route.join()!==d.route.join(); tr.route=[...d.route]; tr.start=d.start; tr.every=d.every; tr.waits=[...d.waits]; tr.auto=!d.manual; tr.plats=d.plats||null; tr.vias=d.vias||null; tr.split=d.split||null;
     if(routeChanged){ tr.cycleBase=null; if(tr.at!=null){ const i=tr.route.indexOf(nodeSite.get(tr.at).id); if(i>=0){ tr.stopIdx=i; } else { tr.stopIdx=tr.route.length-1; } if(tr.st==='ready'){ tr.depAt=tr.plannedDep=(tr.stopIdx===0?nextSlot(tr,gameMin):gameMin); } } else tr.nextIdx=-1; }
     else if(tr.st==='ready' && tr.stopIdx===0){ tr.depAt=tr.plannedDep=nextSlot(tr,gameMin); }
-    buildTrainMesh(tr); toast(L(`${tr.name} má nový jízdní řád.`,`${tr.name} has a new timetable.`,`${tr.name} hat einen neuen Fahrplan.`),'good'); }
+    buildTrainMesh(tr); /*quiet*/ }
   dirty(); showTrains();
 }
 
@@ -2647,7 +2667,7 @@ function showIntro(resumed){
     `Ein Wagen verdient je nach Ware und Entfernung; die Preise gelten für 100 km. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer, 100 km kosten also 500 Münzen. Mit der Taste 1× beschleunigst oder pausierst du die Zeit.`)}</p>
   <div class="actions"><button class="btn" data-close>${L('Jdu stavět','Start building','Los geht’s')}</button></div>`,'intro');
 }
-function showWin(){
+function showWin(){ if(TUT){ tutTick(true); return; }
   openSheet(`<span class="eyebrow">${L('Level 1 splněn','Level 1 complete','Level 1 geschafft')}</span><h2>${L('Česko je propojené!','Czechia is connected!','Tschechien ist verbunden!')}</h2><p>${L(`Všechna města i turistická místa jsou spokojená a tvoje tratě vydělávají přes ${fmtK(GOAL_RATE)} za minutu.`,`Every city and tourist town is happy and your lines earn over ${fmtK(GOAL_RATE)} per minute.`,`Alle Städte und Ausflugsorte sind zufrieden, und deine Strecken bringen über ${fmtK(GOAL_RATE)} pro Minute.`)}</p>
   <div class="stats"><div><b>${num(score)}</b><small>${L('skóre','score','Punkte')}</small></div><div><b>${deliveries}</b><small>${L('dodávek','deliveries','Lieferungen')}</small></div><div><b>${crashes}</b><small>${L('srážek','crashes','Unfälle')}</small></div></div>
   <p class="sub">${L('Další level je Slovensko. V prototypu zatím není.','The next level is Slovakia. It is not in the prototype yet.','Das nächste Level ist die Slowakei. Im Prototyp gibt es sie noch nicht.')}</p>
@@ -2800,7 +2820,8 @@ let saveFailed=false;
 async function save(){
   if(saving){ saveAgain=true; return; } saving=true; saveFailed=false;
   const st=snapshotState(), praha=consumers[0].done?3:consumers[0].lvl+1;
-  try{ localStorage.setItem('zi-save-v7',JSON.stringify(st)); }catch(e){}
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(st)); }catch(e){}
+  if(TUT){ setSave(['Tutoriál uložen v zařízení','Tutorial saved on this device','Tutorial auf dem Gerät gespeichert'],false); saving=false; return; }
   try{
     if(mode==='claude'){ await db.doc(`data/users/${uid}/game`).set(st); await db.doc(`scores/${uid}`).set({score, praha, won, updatedAt:st.savedAt}); setSave(['Uloženo','Saved','Gespeichert'],true); }
     else if(mode==='firebase' && uid){ await fb.db.collection('players').doc(uid).set({state:JSON.stringify(st), updatedAt:st.savedAt});
@@ -2810,7 +2831,8 @@ async function save(){
   if(!saveFailed) lastSaveAt=Date.now();
   saving=false; if(saveAgain){ saveAgain=false; save(); }
 }
-function loadLocal(){ try{ const raw=localStorage.getItem('zi-save-v7'); return raw?loadState(JSON.parse(raw)):false; }catch(e){ return false; } }
+const SAVE_KEY=TUT?'zi-save-tut':'zi-save-v7';
+function loadLocal(){ try{ const raw=localStorage.getItem(SAVE_KEY); return raw?loadState(JSON.parse(raw)):false; }catch(e){ return false; } }
 const waitFor=(fn,ms)=>new Promise(res=>{ const t0=performance.now(); (function poll(){ const v=fn(); if(v||performance.now()-t0>ms) res(v); else setTimeout(poll,100); })(); });
 async function initAccount(){
   let restored=loadLocal();
@@ -2819,7 +2841,7 @@ async function initAccount(){
     if(userCap){ try{ const me=await userCap.me(); uid=me.id; myName=me.name||''; if(me.avatarUrl) $('avatar').src=me.avatarUrl; }catch(e){} } }
   if(db && uid){
     mode='claude'; setPlayer(myName||['Přihlášený hráč','Signed-in player','Angemeldeter Spieler'],null,['Načítám postup…','Loading progress…','Lade Fortschritt…'],true);
-    try{ const snap=await db.doc(`data/users/${uid}/game`).get(); if(snap.exists && loadState(snap.data())) restored=true; }catch(e){}
+    try{ const snap=await db.doc(`data/users/${uid}/game`).get(); if(!TUT && snap.exists && loadState(snap.data())) restored=true; }catch(e){}
     setSave(['Postup se ukládá','Progress is saved','Fortschritt wird gespeichert'],true);
     try{ db.collection('scores').orderBy('score','desc').limit(20).onSnapshot(s=>{ board=s.docs.map(d=>({id:d.id,...d.data()})); boardMsg=board.length?'':['Zatím nikdo nehrál. Buď první!','Nobody has played yet. Be the first!','Noch hat niemand gespielt. Sei der Erste!']; if(!$('levelsView').hidden) renderLevels(); }, ()=>{ boardMsg=['Žebříček teď není dostupný.','The leaderboard is not available right now.','Die Rangliste ist gerade nicht verfügbar.']; }); }catch(e){}
   } else if(window.FIREBASE_CONFIG){ setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); boardMsg=['Žebříček uvidíš po přihlášení přes Google.','Sign in with Google to see the leaderboard.','Melde dich mit Google an, um die Rangliste zu sehen.']; initFirebase(window.FIREBASE_CONFIG); }
@@ -2836,7 +2858,7 @@ async function initFirebase(cfg){
     fb.auth.onAuthStateChanged(async u=>{
       if(u){ uid=u.uid; myName=u.displayName||'Hráč'; fb.photo=u.photoURL||''; mode='firebase'; setPlayer(myName,fb.photo,['Načítám postup…','Loading progress…','Lade Fortschritt…'],true);
         try{ const d=await fb.db.collection('players').doc(uid).get();
-          if(d.exists){ loadState(JSON.parse(d.data().state)); toast(L(`Vítej, ${myName}! Postup je nahraný z tvého účtu.`,`Welcome, ${myName}! Progress loaded from your account.`,`Willkommen, ${myName}! Fortschritt aus deinem Konto geladen.`),'good'); }
+          if(TUT){ } else if(d.exists){ loadState(JSON.parse(d.data().state)); toast(L(`Vítej, ${myName}! Postup je nahraný z tvého účtu.`,`Welcome, ${myName}! Progress loaded from your account.`,`Willkommen, ${myName}! Fortschritt aus deinem Konto geladen.`),'good'); }
           else { await save(); toast(L(`Vítej, ${myName}! Hra se teď ukládá k tvému Google účtu.`,`Welcome, ${myName}! The game now saves to your Google account.`,`Willkommen, ${myName}! Das Spiel speichert jetzt in deinem Google-Konto.`),'good'); } }catch(e){}
         setSave(['Ukládá se k Google účtu','Saving to Google account','Speichert im Google-Konto'],true);
       } else { uid=null; mode='local'; setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); } });
@@ -2876,7 +2898,7 @@ function applyStatic(){
   $('rotateTxt').textContent=L('Otoč telefon na šířku','Turn your phone sideways','Dreh das Handy quer'); $('rotateSkip').textContent=L('Hrát na výšku','Play upright','Hochkant spielen'); $('menuBtn').setAttribute('aria-label',L('Menu','Menu','Menü'));
 }
 function setLang(l){
-  LANG=l; setTimeout(renderMenu,0); try{ localStorage.setItem('zi-lang',l); }catch(e){}
+  LANG=l; setTimeout(renderMenu,0); if(TUT) setTimeout(()=>tutTick(true),0); try{ localStorage.setItem('zi-lang',l); }catch(e){}
   applyStatic(); lastClock=''; renderClock(); setMoney(money); addScore(0); paintPlayer(); renderUndo(); renderNeeds(); setTool(tool); SITES.forEach(refreshLabel);
   if(!$('plansView').hidden) renderPlans(true); if(!$('levelsView').hidden) renderLevels();
   const k=sheetKind; if(k==='intro') showIntro(introResumed); else if(k==='player') $('playerBtn').click(); else if(k==='goal') goalSheet(); else if(k==='trains') showTrains(); else if(k==='editor') openSheet(edHtml(),'editor',true); else if(k) closeSheet();
@@ -2891,29 +2913,30 @@ function lockLand(){ try{ screen.orientation && screen.orientation.lock && scree
 function openMenu(v){ menuView=v||'main'; menuEl.hidden=false; closeSheet(); renderMenu(); }
 function closeMenu(){ menuEl.hidden=true; checkRotate(); }
 const mb=(act,icon,title,sub,cls)=>`<button class="mbtn ${cls||''}" data-m="${act}"><i aria-hidden="true">${icon}</i><span>${title}${sub?`<small>${sub}</small>`:''}</span></button>`;
-const backBtn=()=>`<button class="btn ghost small mback" data-m="main">← ${L('Zpět','Back','Zurück')}</button>`;
+const backBtn=(to)=>`<button class="btn ghost small mback" data-m="${to||'main'}">← ${L('Zpět','Back','Zurück')}</button>`;
 function loginText(){ if(mode==='claude') return L('Hraješ pod svým účtem. Postup i skóre se ukládají samy.','You are playing with your account. Progress and score save automatically.','Du spielst mit deinem Konto. Fortschritt und Punkte werden automatisch gespeichert.');
   if(mode==='firebase') return L(`Přihlášen přes Google jako ${esc(myName)}. Postup se ukládá k účtu, pokračuješ i na jiném zařízení.`,`Signed in with Google as ${esc(myName)}. Progress is saved to your account, so you can continue on another device.`,`Mit Google angemeldet als ${esc(myName)}. Der Fortschritt liegt im Konto, du kannst auf einem anderen Gerät weiterspielen.`);
   return L('Nejsi přihlášený. Postup se ukládá jen v tomto zařízení. Po přihlášení přes Google se uloží k účtu a skóre půjde do žebříčku.','Not signed in. Progress is saved on this device only. Sign in with Google to save it to your account and join the leaderboard.','Nicht angemeldet. Der Fortschritt wird nur auf diesem Gerät gespeichert. Mit Google-Anmeldung landet er im Konto und in der Rangliste.'); }
 function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h='';
-  $('menuSub').textContent=L('Level 1 · Česko','Level 1 · Czechia','Level 1 · Tschechien');
+  $('menuSub').textContent=TUT?L('Tutoriál','Tutorial','Tutorial'):L('Level 1 · Česko','Level 1 · Czechia','Level 1 · Tschechien');
   if(menuView==='main'){
     if(prog||menuStarted) h+=mb('continue','▶',menuStarted?L('Pokračovat','Resume','Weiterspielen'):L('Pokračovat ve hře','Continue game','Spiel fortsetzen'),`${num(score)} ${L('bodů','points','Punkte')} · ${fmtK(money)}`,'primary')+mb('new','✚',L('Nová hra','New game','Neues Spiel'),L('začít od začátku','start from scratch','von vorn beginnen'));
     else h+=mb('new','▶',L('Nová hra','New game','Neues Spiel'),L('postav první trať','build your first line','baue deine erste Strecke'),'primary');
     if(menuStarted) h+=mb('quit','💾',L('Uložit a ukončit','Save and quit','Speichern und beenden'),lastSavedTxt());
-    if(!isInstalled()) h+=mb('install','📲',L('Nainstalovat do telefonu','Install on your phone','Aufs Handy installieren'), installEvt?L('ikona na ploše, hraje se bez prohlížeče','an icon on your home screen, no browser bar','Symbol auf dem Startbildschirm, ohne Browserleiste'):L('jak na to','how to do it','so geht’s'));
-    h+=mb('login','👤',L('Přihlášení','Sign in','Anmeldung'), mode==='local'?L('Google účet','Google account','Google-Konto'):esc(myName||L('přihlášen','signed in','angemeldet')));
+    h+= TUT ? mb('maingame','🗺',L('Hlavní hra – Česko','Main game – Czechia','Hauptspiel – Tschechien'),L('opustit tutoriál','leave the tutorial','Tutorial verlassen')) : mb('tutorial','🎓',L('Tutoriál','Tutorial','Tutorial'),L('naučí tě hrát krok za krokem','teaches you step by step','zeigt dir alles Schritt für Schritt'));
+
     h+=mb('settings','⚙',L('Nastavení','Settings','Einstellungen'),L('zvuk, jazyk, ovládání, reset','sound, language, controls, reset','Ton, Sprache, Steuerung, Reset'));
     h+=mb('rules','📖',L('Pravidla','Rules','Regeln'),L('jak se hraje','how to play','so wird gespielt'));
-    if(prog) h+=`<div class="mrow"><button class="btn ghost small" data-m="plans">${L('Jízdní řády','Timetables','Fahrpläne')}</button><button class="btn ghost small" data-m="levels">${L('Levely a žebříček','Levels and leaderboard','Level und Rangliste')}</button></div>`;
+
     h+=`<div class="mfoot"><img src="${$('avatar').src}" alt=""><span>${esc(tx(playerView.name))} · ${esc(tx(playerView.line))}</span></div>`; }
   else if(menuView==='newconfirm'){ h=`${backBtn()}<h2>${L('Začít novou hru?','Start a new game?','Neues Spiel beginnen?')}</h2><p>${L('Všechny tratě, vlaky, peníze a skóre se smažou. Nejde to vrátit.','All lines, trains, coins and score will be deleted. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht. Das lässt sich nicht rückgängig machen.')}</p>`+mb('newgo','✚',L('Ano, nová hra','Yes, new game','Ja, neues Spiel'),'','danger')+mb('main','←',L('Ne, zpět','No, go back','Nein, zurück')); }
-  else if(menuView==='login'){ h=`${backBtn()}<h2>${L('Přihlášení','Sign in','Anmeldung')}</h2><p>${loginText()}</p>
+  else if(menuView==='login'){ h=`${backBtn('settings')}<h2>${L('Přihlášení','Sign in','Anmeldung')}</h2><p>${loginText()}</p>
       <div class="stats"><div><b>${num(score)}</b><small>${L('skóre','score','Punkte')}</small></div><div><b>${deliveries}</b><small>${L('dodávek','deliveries','Lieferungen')}</small></div><div><b>${crashes}</b><small>${L('srážek','crashes','Unfälle')}</small></div></div>`;
     if(mode==='firebase') h+=mb('glogout','⎋',L('Odhlásit se','Sign out','Abmelden'));
     else if(mode==='local') h+=mb('glogin','G',L('Přihlásit přes Google','Sign in with Google','Mit Google anmelden'),'','primary');
     h+=`<p class="sub">${L('Skóre: 10 bodů za dodávku, 100 až 300 za postup města, 500 za splnění levelu a −50 za srážku.','Score: 10 points per delivery, 100 to 300 when a city levels up, 500 for completing the level and −50 per crash.','Punkte: 10 pro Lieferung, 100 bis 300 für den Aufstieg einer Stadt, 500 für das Level und −50 pro Unfall.')}</p>`; }
   else if(menuView==='settings'){ h=`${backBtn()}<h2>${L('Nastavení','Settings','Einstellungen')}</h2>
+      ${mb('login','👤',L('Přihlášení','Sign in','Anmeldung'), mode==='local'?L('Google účet – ukládání postupu','Google account – save your progress','Google-Konto – Fortschritt speichern'):esc(myName||L('přihlášen','signed in','angemeldet')))}${isInstalled()?'':mb('install','📲',L('Nainstalovat do telefonu','Install on your phone','Aufs Handy installieren'),'')}
       <h3>${L('Zvuk','Sound','Ton')}</h3>
       <div class="toggle"><span>${L('Zvuky hry','Game sounds','Spielgeräusche')}</span><button class="sw" role="switch" aria-checked="${SND.on}" data-m="snd" aria-label="${L('Zvuky hry','Game sounds','Spielgeräusche')}"></button></div>
       <label class="toggle"><span>${L('Hlasitost','Volume','Lautstärke')}</span><input type="range" min="0" max="100" step="5" value="${Math.round(SND.vol*100)}" id="volRange"></label>
@@ -2928,7 +2951,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
       <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
       <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerKm} mincí za každý ujetý km (100 km = 500 mincí).`,`A wagon earns by cargo and distance. Running costs ${COST.runPerKm} coins per kilometre (100 km = 500 coins).`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer (100 km = 500 Münzen).`)}</p>`; }
-  else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn()}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
+  else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn('settings')}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
       <p>${L('Hra se dá nainstalovat jen z prohlížeče Chrome (Android) nebo Safari (iPhone). Když ji otevřeš z jiné aplikace, třeba z Messengeru nebo Clauda, běží v jejich okně a instalace tam nejde.','The game can only be installed from Chrome (Android) or Safari (iPhone). Opened from another app, such as Messenger or Claude, it runs in that app’s window where installing is not possible.','Das Spiel lässt sich nur aus Chrome (Android) oder Safari (iPhone) installieren. Aus einer anderen App geöffnet, etwa Messenger oder Claude, läuft es in deren Fenster, und dort geht keine Installation.')}</p>
       <ol><li>${L('Zkopíruj si odkaz na hru a vlož ho do Chromu (na iPhonu do Safari).','Copy the game link and paste it into Chrome (Safari on iPhone).','Kopiere den Spiellink und füge ihn in Chrome ein (Safari auf dem iPhone).')}</li>
       <li>${L('Android: vpravo nahoře ⋮ → <b>Přidat na plochu</b> → <b>Instalovat</b>.','Android: top right ⋮ → <b>Add to Home screen</b> → <b>Install</b>.','Android: oben rechts ⋮ → <b>Zum Startbildschirm hinzufügen</b> → <b>Installieren</b>.')}</li>
@@ -2948,7 +2971,29 @@ const isInstalled=()=>{ try{ return matchMedia('(display-mode: standalone)').mat
 let savedOk=true, lastSaveAt=0;
 const lastSavedTxt=()=>lastSaveAt?L(`naposledy uloženo v ${new Date(lastSaveAt).toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'})}`,`last saved at ${new Date(lastSaveAt).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}`,`zuletzt gespeichert um ${new Date(lastSaveAt).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}`):L('uloží postup','saves your progress','speichert den Fortschritt');
 async function saveNow(){ clearTimeout(saveTimer); for(let i=0;i<40 && saving;i++) await new Promise(r=>setTimeout(r,100)); await save(); return !saveFailed; }
-function startPlaying(fresh){ closeMenu(); menuStarted=true; goFullscreen(); sndInit(); if(fresh) showIntro(false); else showHint(HINTS[tool]()); }
+// ===== tutorial guide: the dispatcher leads step by step =====
+let tutStep=0; try{ tutStep=+(localStorage.getItem('zi-tut-step')||0); }catch(e){}
+const hasTrain=(a,b)=>trains.some(tr=>tr.route.includes(a)&&tr.route.includes(b));
+const linked=(a,b)=>!!routePath(site(a).node,site(b).node);
+const TSTEPS = TUT ? [
+  {t:()=>L('Vítej! Já jsem výpravčí a provedu tě hrou. Velkov potřebuje vodu. Klepni vpravo na ikonu Koleje.','Welcome! I am the dispatcher and I will show you around. Velkov needs water. Tap the Tracks icon on the right.','Willkommen! Ich bin der Fahrdienstleiter und zeige dir alles. Velkov braucht Wasser. Tippe rechts auf Gleise.'), ok:()=>tool==='track'},
+  {t:()=>L('Táhni prstem od nádraží Pramen až k nádraží Velkov. Trať se postaví, až prst zvedneš.','Drag your finger from the Pramen station to the Velkov station. The line is built when you lift your finger.','Zieh den Finger vom Bahnhof Pramen bis zum Bahnhof Velkov. Die Strecke entsteht beim Loslassen.'), ok:()=>linked('pramen','velkov')},
+  {t:()=>L('Skvělé! Stavění ukončíš tlačítkem Hotovo vpravo nahoře. Pak klepni na ikonu Vlaky.','Great! Finish building with Done at the top right. Then tap the Trains icon.','Super! Mit Fertig oben rechts beendest du das Bauen. Dann tippe auf Züge.'), ok:()=>tool==='route'||sheetKind==='editor'||hasTrain('pramen','velkov')},
+  {t:()=>L('Klepni na Pramen, pak na Velkov a dole na „Hotovo – vybrat vozy“. Cisterna na vodu se přidá sama – stačí „Koupit a vypravit“.','Tap Pramen, then Velkov, then “Done – pick wagons” below. A tank wagon is added for you – just “Buy and send off”.','Tippe auf Pramen, dann Velkov und unten auf „Fertig – Wagen wählen“. Ein Kesselwagen kommt von selbst – nur noch „Kaufen und losschicken“.'), ok:()=>hasTrain('pramen','velkov')},
+  {t:()=>L('Vlak naloží vodu a odveze ji do Velkova. Čas zrychlíš tlačítkem 1× nahoře.','The train loads water and takes it to Velkov. Speed time up with the 1× button at the top.','Der Zug lädt Wasser und bringt es nach Velkov. Mit 1× oben läuft die Zeit schneller.'), ok:()=>lvlCount(site('velkov'),'voda')>0||site('velkov').lvl>0},
+  {t:()=>L('Voda dorazila! Malkov chce turisty z Velkova. Postav trať z Velkova do Malkova a pošli tam vlak.','The water arrived! Malkov wants tourists from Velkov. Build a line from Velkov to Malkov and send a train.','Das Wasser ist da! Malkov will Touristen aus Velkov. Baue eine Strecke von Velkov nach Malkov und schick einen Zug.'), ok:()=>hasTrain('velkov','malkov')},
+  {t:()=>L('Velkov chce i pivo. To vaří Pivovar z chmele a obilí. Chmelnice ale potřebuje vodu: postav trať z Pramene do Chmelnice a vlak, který ji tam vozí.','Velkov wants beer too. The Brewery makes it from hops and grain. But the Hop garden needs water: build a line from Pramen to the Hop garden and a train to carry it.','Velkov will auch Bier. Die Brauerei braut es aus Hopfen und Getreide. Der Hopfengarten braucht aber Wasser: baue eine Strecke von Pramen zum Hopfengarten und einen Zug dafür.'), ok:()=>hasTrain('pramen','chmelnice')},
+  {t:()=>L('Chmel teď vozí vlak z Chmelnice do Pivovaru. Postav trať a vlak.','Now a train has to bring hops from the Hop garden to the Brewery. Build the line and the train.','Jetzt muss ein Zug Hopfen vom Hopfengarten zur Brauerei bringen. Baue Strecke und Zug.'), ok:()=>hasTrain('chmelnice','pivovar')},
+  {t:()=>L('Obilí roste na Statku. Vozi ho do Pivovaru – a Malkov ho chce taky.','Grain grows at the Farm. Take it to the Brewery – Malkov wants it too.','Getreide wächst auf dem Hof. Bring es zur Brauerei – Malkov will es auch.'), ok:()=>hasTrain('statek','pivovar')},
+  {t:()=>L('Poslední krok: pivo z Pivovaru odvez do Velkova.','Last step: take the beer from the Brewery to Velkov.','Letzter Schritt: bring das Bier von der Brauerei nach Velkov.'), ok:()=>hasTrain('pivovar','velkov')},
+  {t:()=>L('Všechno jezdí! Teď počkej, až obě města postoupí na vyšší úroveň. Klepnutím na město uvidíš, co mu ještě chybí.','Everything is running! Now wait until both towns level up. Tap a town to see what it still lacks.','Alles fährt! Warte jetzt, bis beide Städte aufsteigen. Tippe auf eine Stadt, um zu sehen, was noch fehlt.'), ok:()=>consumers.every(c=>c.done)},
+  {t:()=>L('Hotovo, umíš to! V menu zvol „Hlavní hra – Česko“ a postav železnici napříč celou zemí.','Done, you have got it! In the menu choose “Main game – Czechia” and build a railway across the whole country.','Geschafft! Wähle im Menü „Hauptspiel – Tschechien“ und baue eine Bahn durchs ganze Land.'), ok:()=>false}
+] : [];
+let tutShown=-1;
+function tutTick(force){ if(!TUT || !menuEl.hidden) return; while(tutStep<TSTEPS.length-1 && TSTEPS[tutStep].ok()){ tutStep++; try{ localStorage.setItem('zi-tut-step',String(tutStep)); }catch(e){} if(tutStep>0) sndCoin(target.x+CX,target.z+CZ); }
+  if(tutStep!==tutShown || force){ tutShown=tutStep; const el=$('hint'); el.innerHTML=`<b>${tutStep+1}/${TSTEPS.length}</b> · ${TSTEPS[tutStep].t()}`; el.classList.add('show'); } }
+if(TUT){ document.body.classList.add('tut'); setInterval(()=>tutTick(false),500); }
+function startPlaying(fresh){ closeMenu(); menuStarted=true; goFullscreen(); sndInit(); if(TUT){ if(fresh){ tutStep=0; try{ localStorage.setItem('zi-tut-step','0'); }catch(e){} } tutTick(true); } else if(fresh) showIntro(false); }
 menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
   if(b.dataset.lang){ setLang(b.dataset.lang); return; }
   const m=b.dataset.m; if(!m) return;
@@ -2959,6 +3004,7 @@ menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) 
   else if(m==='reset'){ menuView='resetconfirm'; renderMenu(); }
   else if(m==='glogin'){ if(!window.FIREBASE_CONFIG) closeMenu(); googleLogin(); }
   else if(m==='glogout'){ googleLogout(); }
+  else if(m==='tutorial' || m==='maingame'){ b.disabled=true; const go=()=>{ try{ localStorage.setItem('zi-level',m==='tutorial'?'tut':'cz'); }catch(er){} location.reload(); }; if(menuStarted) saveNow().then(go,go); else go(); }
   else if(m==='quit'){ b.disabled=true; saveNow().then(ok=>{ savedOk=ok; menuStarted=false; menuView='saved'; if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); if(ok && isInstalled()) setTimeout(()=>{ try{ window.close(); }catch(e){} },1200); }); }
   else if(m==='install'){ if(installEvt){ const ev=installEvt; installEvt=null; ev.prompt(); ev.userChoice.then(c=>{ if(c.outcome!=='accepted'){ installEvt=ev; } renderMenu(); }).catch(()=>{}); } else { menuView='install'; renderMenu(); } }
   else if(m==='copylink'){ const done=()=>toast(L('Odkaz je zkopírovaný. Vlož ho do Chromu.','Link copied. Paste it into Chrome.','Link kopiert. Füge ihn in Chrome ein.'),'good'); try{ navigator.clipboard.writeText(GAME_URL).then(done,()=>prompt('',GAME_URL)); }catch(e){ prompt('',GAME_URL); } }
@@ -2971,7 +3017,7 @@ menuEl.addEventListener('input',e=>{ if(e.target.id==='volRange'){ SND.vol=e.tar
 $('menuBtn').onclick=()=>openMenu('main');
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ if(!menuEl.hidden && menuStarted && menuView==='main') closeMenu(); else if(menuEl.hidden && sheet.hidden) openMenu('main'); } });
 // a short note about the picked tool, then it gets out of the way
-let hintT; function showHint(t){ const el=$('hint'); el.textContent=t; el.classList.add('show'); clearTimeout(hintT); hintT=setTimeout(()=>el.classList.remove('show'),7000); }
+let hintT; function showHint(t){ return;  const el=$('hint'); el.textContent=t; el.classList.add('show'); clearTimeout(hintT); hintT=setTimeout(()=>el.classList.remove('show'),7000); }
 // phones held upright get a nudge to turn sideways
 let rotateSkip=false; try{ rotateSkip=sessionStorage.getItem('zi-rot')==='1'; }catch(e){}
 function checkRotate(){ const small=Math.min(innerWidth,innerHeight)<600, portrait=innerHeight>innerWidth*1.1; $('rotateHint').hidden=!(small && portrait && !rotateSkip && menuEl.hidden); }
@@ -3093,7 +3139,7 @@ function frame(now){
   planeTick(real);
   for(const [id,o] of signalMeshes){ const red=trains.some(t=>t.st==='hold'&&t.path&&t.path[t.pi]===id) || (entrySig.has(id) && [...(adj.get(id)||[])].some(x=>{ const po=portOf.get(x); return po && trainsAt(po.s.node).some(t=>t.plat===po.k); })) || [...(adj.get(id)||[])].some(x=>occ.has(ekey(id,x))); o.l1.material=red?LIGHT_OFF:LIGHT_G; o.l2.material=red?LIGHT_R:LIGHT_OFF; }
   if(tool==='track' && anchor!=null){ const nd=anchorPos(); ring.visible=true; ring.position.set(nd.x-CX,3,nd.y-CZ); const s=1+Math.sin(now/180)*0.12; ring.scale.set(s,s,s); } else ring.visible=false;
-  const k=Math.max(0.35,camD/620); for(const sp of labelOf.values()) sp.scale.set(78*k,22.8*k,1);
+  const k=Math.max(0.35,camD/620); for(const sp of labelOf.values()) sp.scale.set(112*k,32.8*k,1);
   updateSmoke(real); waterTex.offset.x+=real*0.004; waterTex.offset.y+=real*0.002;
   for(let i=effects.length-1;i>=0;i--){ const f=effects[i]; f.t+=real; const s=3+f.t*24; f.ball.scale.set(s,s,s); f.ball.material.opacity=Math.max(0,1-f.t/0.6); if(f.t>0.7){ scene.remove(f.g); effects.splice(i,1); } }
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.t+=real; v3.set(f.x-CX,20,f.y-CZ).project(camera);
