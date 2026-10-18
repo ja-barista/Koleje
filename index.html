@@ -991,6 +991,10 @@ function initSiteState(s){
   if(s.levels){ s.lvl=0; s.got={}; s.done=false; s.log=[]; s.since=0; s.best=0; }
 }
 SITES.forEach(initSiteState);
+// how many platform tracks a station gets: by how many different goods the place needs
+const OLD_PLATS = SITES.map(s=>s.plat);   // layout of saves made before v32
+function needsCount(s){ const g=new Set(); (s.levels||[]).forEach(o=>Object.keys(o).forEach(c=>g.add(c))); if(s.makes) s.makes.inp.forEach(c=>g.add(c)); return g.size; }
+SITES.forEach(s=>{ if(s.kind==='airport'){ s.plat=3; return; } const n=needsCount(s); s.plat = n<=2 ? 2 : n<=4 ? 3 : 4; });
 SITES.forEach(s=>{ s.plen = s.kind==='city' ? 104 : 60; s.front = s.plen/2-8; });
 // Every station has two fixed track ends (ports): west and east end of the platforms.
 const LEAD=55;
@@ -1554,7 +1558,7 @@ function bestDir(dirs,want){ let b=null, bd=-2; for(const d of dirs){ const v=do
 // Waypoints for a new line: straight out of station ends, smooth joins onto existing track.
 function edgeDir(P,want){ const e=edges.get(P.k); if(!e) return null; const d=unit(nodes[e.a].x,nodes[e.a].y,nodes[e.b].x,nodes[e.b].y); return dot2(d,want)>=0?d:[-d[0],-d[1]]; }
 // Waypoints for a new line: a smooth curve that leaves a station straight along its tracks and joins existing track tangentially.
-function planBuildWith(A,B,sp0,ep0,kf){
+function planBuildWith(A,B,sp0,ep0,kf,bend){
   const tgt=targetPos(B); let S, sDir=null;
   if(A.kind==='station'){ const c=nodes[A.s.node], ax=A.s.ax, east= sp0!=null ? sp0===1 : (tgt.x-c.x)*ax[0]+(tgt.y-c.y)*ax[1]>=0; S={id:portFor(A.s,east?1:0,A.k,tgt)}; sDir=east?[ax[0],ax[1]]:[-ax[0],-ax[1]]; }
   else if(A.kind==='node'){ S={id:A.id}; const n=nodes[A.id]; sDir=bestDir(contDirs(A.id),unit(n.x,n.y,tgt.x,tgt.y)); }
@@ -1569,6 +1573,7 @@ function planBuildWith(A,B,sp0,ep0,kf){
   if(LS) sp=LS; const ep=LE||EP, D=Math.hypot(ep.x-sp.x,ep.y-sp.y), c=Math.max(LEAD,D*kf);
   const c1 = sDir ? {x:sp.x+sDir[0]*c, y:sp.y+sDir[1]*c} : {x:sp.x+(ep.x-sp.x)/3, y:sp.y+(ep.y-sp.y)/3};
   const c2 = eDir ? {x:ep.x-eDir[0]*c, y:ep.y-eDir[1]*c} : {x:ep.x-(ep.x-sp.x)/3, y:ep.y-(ep.y-sp.y)/3};
+  if(bend){ const nx=-(ep.y-sp.y)/(D||1), ny=(ep.x-sp.x)/(D||1); for(const q of [c1,c2]){ q.x+=nx*bend*D; q.y+=ny*bend*D; } }   // swing out sideways to get round a station
   const at=t=>{ const u=1-t; return {x:u*u*u*sp.x+3*u*u*t*c1.x+3*u*t*t*c2.x+t*t*t*ep.x, y:u*u*u*sp.y+3*u*u*t*c1.y+3*u*t*t*c2.y+t*t*t*ep.y}; };
   // even spacing along the curve, denser where it bends
   // points every ~70 units on straight parts and every ~11 degrees in bends, so curves stay round
@@ -1597,7 +1602,8 @@ function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unsh
 function planBuild(A,B){
   const so = A.kind==='station' ? (A.d!=null?[A.d]:[0,1]) : [null], eo = B.kind==='station' ? (B.d!=null?[B.d]:[0,1]) : [null];
   let best=null, bs=Infinity;
-  for(const a of so) for(const b of eo) for(const kf of [0.3,0.45,0.65,0.9,1.25]){ const pl=planBuildWith(A,B,a,b,kf), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
+  for(const a of so) for(const b of eo) for(const kf of [0.3,0.45,0.65,0.9,1.25]){ const pl=planBuildWith(A,B,a,b,kf,0), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
+  if(bs>=1e7) for(const a of so) for(const b of eo) for(const kf of [0.45,0.8]) for(const bend of [-0.6,-0.4,-0.25,0.25,0.4,0.6]){ const pl=planBuildWith(A,B,a,b,kf,bend), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   return best;
 }
 const ptPos = p => p.id!=null ? nodes[p.id] : (p.edge ? p.edge : p);
@@ -2284,7 +2290,8 @@ tcWrap.addEventListener('click',e=>{ if(e.target===tcWrap){ hideTrainCard(); ret
   else if(b.dataset.tc==='follow' && tr && tr.parts){ const m=tr.parts[0].position; target.x=m.x; target.z=m.z; camD=Math.min(camD,420); clampTarget(); updateCamera(); } });
 // warn before trains collide
 /* ----- planning a route on the map ----- */
-let rStops=[], rPlats=[], rVias=[]; const routeGroup=new T.Group(); routeGroup.renderOrder=15; scene.add(routeGroup);
+// rDraft: the train being edited while its route is clicked on the map
+let rStops=[], rPlats=[], rVias=[], rDraft=null; const routeGroup=new T.Group(); routeGroup.renderOrder=15; scene.add(routeGroup);
 const RT_LIGHT=new T.MeshBasicMaterial({color:'#38b6f5',depthTest:false,transparent:true,opacity:0.95}), RT_DARK=new T.MeshBasicMaterial({color:'#1e40af',depthTest:false,transparent:true,opacity:0.9});
 const arrowGeo=new T.ConeGeometry(2.2,5,3); arrowGeo.rotateZ(-Math.PI/2);
 function drawLeg(path,m,off){ if(!path) return; const P=path.map((id,i)=>NP(path,i)); const k=Math.max(1,camD/450); off*=k; let acc=12*k;
@@ -2335,10 +2342,10 @@ function routeVia(w){ if(!rStops.length){ toast(L('Nejdřív klepni na stanici, 
   toast(L('Trasa povede přes tuhle kolej.','The route will run over this track.','Die Strecke führt über dieses Gleis.'),'good'); }
 $('routePanel').addEventListener('click',e=>{ const b=e.target.closest('[data-rp]'); if(!b) return; const a=b.dataset.rp;
   if(a==='undo'){ const i=rStops.length-1; if(i>=0 && rVias[i] && rVias[i].length) rVias[i].pop(); else { rStops.pop(); rPlats.pop(); rVias.pop(); } renderRoute(); }
-  else if(a==='exit') setTool('pan');
+  else if(a==='exit') routeExit();
   else if(a==='mirror' && rStops.length>=3){ const back=rStops.slice(1,-1).reverse(); rStops.push(...back); back.forEach(()=>{ rPlats.push(null); rVias.push([]); }); renderRoute(); }
   else if(a==='list') showTrains();
-  else if(a==='done' && rStops.length>1){ const ch=routeCheck(rStops,rPlats,rVias); if(!ch.ok){ toast(legFailMsg(rStops,ch.i,rPlats),'bad',7000); return; } const r=[...rStops], pk=[...rPlats], vv=rVias.map(a=>[...a]); setTool('pan'); openEditor(0); draft.route=r; draft.plats=pk.some(x=>x!=null)?pk:null; draft.vias=vv.some(a=>a.length)?vv:null; draft.waits=r.map(()=>0); autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); } });
+  else if(a==='done' && rStops.length>1) routeDone(); });
 const warned=new Set(); let warnOpen=false;
 setInterval(()=>{ if(warnOpen || !trains.length || !ready) return; let cs=[]; try{ cs=conflicts(trains,gameMin,gameMin+240).filter(c=>c.kind==='crash'); }catch(e){ return; }
   const c=cs.find(c=>!warned.has(c.trs.map(t=>t.id).sort().join('-'))); if(!c) return; warned.add(c.trs.map(t=>t.id).sort().join('-'));
@@ -2359,7 +2366,15 @@ const HINTS={
 };
 function setTool(t){ tool=t; if(t!=='track') anchor=null; if(t==='route') openRoutePlanner(); else closeRoutePlanner(); document.querySelectorAll('[data-tool]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tool===t))); showHint(HINTS[t]()); document.body.classList.toggle('building',t!=='pan'); $('doneBtn').hidden=t==='pan'; if(dotsMesh) dotsMesh.visible=t==='track'||t==='signal'; }
 document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool===tool?'pan':b.dataset.tool));
-$('tools').prepend($('menuBtn')); $('doneBtn').onclick=()=>setTool('pan');
+$('tools').prepend($('menuBtn')); $('doneBtn').onclick=()=>{ if(tool==='route'){ if(rStops.length>1) routeDone(); else routeExit(); } else setTool('pan'); };
+function routeExit(){ const d=rDraft; rDraft=null; setTool('pan'); if(d){ draft=d; openSheet(edHtml(),'editor'); } }
+function routeDone(){ const ch=routeCheck(rStops,rPlats,rVias); if(!ch.ok){ toast(legFailMsg(rStops,ch.i,rPlats),'bad',7000); return; }
+  const r=[...rStops], pk=[...rPlats], vv=rVias.map(a=>[...a]), d0=rDraft; rDraft=null; setTool('pan');
+  if(d0) draft=d0; else openEditor(0);
+  draft.route=r; draft.plats=pk.some(x=>x!=null)?pk:null; draft.vias=vv.some(a=>a.length)?vv:null; draft.waits=r.map(()=>0); draft.split=null; draft.adding=false;
+  if(!draft.consist.length) autoConsist(draft); fitEvery(draft,true); openSheet(edHtml(),'editor'); }
+function routeOnMap(){ const d=draft; closeSheet(); setTool('route'); rDraft=d; rStops=[...d.route]; rPlats=d.plats?[...d.plats]:d.route.map(()=>null); rVias=d.vias?d.vias.map(a=>[...(a||[])]):d.route.map(()=>[]); renderRoute();
+  showHint(L('Klepej na stanice v pořadí, kudy má vlak jet. Zpět o zastávku smaže poslední, Hotovo trasu uloží.','Tap the stations in the order the train should run. Remove last stop deletes the last one, Done saves the route.','Tippe die Bahnhöfe in Fahrtreihenfolge an. Letzten Halt entfernen löscht den letzten, Fertig speichert die Strecke.')); }
 $('advFace').onclick=()=>{ const h=$('hint'); if(h.classList.contains('show')){ h.classList.remove('show'); } else showHint(HINTS[tool]()); };
 $('sndBtn').onclick=()=>{ SND.on=!SND.on; try{ localStorage.setItem('zi-sound',SND.on?'1':'0'); }catch(e){} sndInit(); sndApply(); sndBtnPaint(); renderMenu(); };
 $('speed').onclick=e=>{ speedIdx=(speedIdx+1)%SPEEDS.length; e.currentTarget.textContent=SPEED_LABEL[speedIdx]; };
@@ -2482,13 +2497,14 @@ function edHtml(){
   else h+=`<p class="sub">${L('Klepni na stanice v pořadí, kudy má vlak jet. Vlak zastaví v každé z nich a pak jede znovu od první.','Tap the stations in the order the train should run. It stops at each one, then starts again from the first.','Tippe die Bahnhöfe in Fahrtreihenfolge an. Der Zug hält an jedem und beginnt dann wieder beim ersten.')}</p>`;
   const last=d.route[d.route.length-1], lastK=null;
   const reach = s2 => !last || (s2.id!==last && !!strictLeg(site(last).node,null,null,s2.node,null));
-  if(d.adding || !d.route.length){
+  if(!d.route.length){ h+=`<div class="routebtns"><button class="bigadd" data-ed="map">🗺 ${L('Vyklikat trasu na mapě','Click the route on the map','Strecke auf der Karte anklicken')}</button></div>`; }
+  else if(d.adding){
     h+=`<div class="stopchips addstops">`+SITES.filter(hasTrack).map(s2=>`<button class="schip big" data-ed="adds" data-s="${s2.id}" ${reach(s2)?'':'disabled'}>+ ${s2.name}</button>`).join('')+`</div>`;
     if(d.route.length) h+=`<div class="actions left"><button class="btn small ghost" data-ed="addoff">${L('Hotovo se zastávkami','Done with stops','Fertig mit Halten')}</button></div>`;
   } else {
     const back=d.route.length>=3 ? d.route.slice(1,-1).reverse() : [];
     const mirrored = d.route.length>=3 && d.route.length%2===0 && d.route.slice(d.route.length/2+1).join()===d.route.slice(1,d.route.length/2).reverse().join();
-    h+=`<div class="routebtns"><button class="bigadd" data-ed="addon">＋ ${L('Přidat zastávku','Add a stop','Halt hinzufügen')}</button>${back.length && !mirrored?`<button class="bigadd alt" data-ed="mirror">⇄ ${L('A zpět přes stejné zastávky','And back via the same stops','Und zurück über dieselben Halte')}</button>`:''}</div>`;
+    h+=`<div class="routebtns"><button class="bigadd" data-ed="map">🗺 ${L('Upravit trasu na mapě','Edit the route on the map','Strecke auf der Karte bearbeiten')}</button>${back.length && !mirrored?`<button class="bigadd alt" data-ed="mirror">⇄ ${L('A zpět přes stejné zastávky','And back via the same stops','Und zurück über dieselben Halte')}</button>`:''}</div>`;
   }
   if(d.route.length>1){ const ch=routeCheck(d.route,d.plats,d.vias); d.routeBad=!ch.ok; if(!ch.ok) h+=`<div class="alert">${legFailMsg(d.route,ch.i,d.plats)}</div>`; }
   if(d.route.length>1) h+= flows.length ? `<p class="sub">${L('Bude vozit','It will carry','Er fährt')}: </p><div class="cgs">${cargoDots(flows)}</div>` : `<div class="alert">${L('Mezi těmihle stanicemi se teď nic nevozí. Přidej jinou zastávku.','Nothing travels between these stations right now. Add another stop.','Zwischen diesen Bahnhöfen wird gerade nichts transportiert. Füge einen anderen Halt hinzu.')}</div>`;
@@ -2541,6 +2557,7 @@ function edAction(b){
   else if(a==='sug'){ d.route=[b.dataset.a,b.dataset.b]; d.waits=[0,0]; if(!d.id||!d.consist.length) autoConsist(d); }
   else if(a==='clr'){ d.route=[]; d.waits=[]; }
   else if(a==='addon'){ d.adding=true; }
+  else if(a==='map'){ routeOnMap(); return; }
   else if(a==='sp'){ const i=+b.dataset.i, c=b.dataset.c, max=+b.dataset.max; d.split=d.split||d.route.map(()=>({})); d.split[i]=d.split[i]||{}; if(b.dataset.v==='auto') delete d.split[i][c]; else { const cur=d.split[i][c]!=null?d.split[i][c]:autoTake(d,i,c); d.split[i][c]=Math.max(0,Math.min(max,cur+(+b.dataset.v))); } }
   else if(a==='addoff'){ d.adding=false; }
   else if(a==='mirror'){ const back=d.route.slice(1,-1).reverse(); d.route.push(...back); back.forEach(()=>d.waits.push(0)); d.plats=null; d.vias=null; d.split=null; fitEvery(d); }
@@ -2744,7 +2761,7 @@ function setPlayer(name, photo, line, ok){ playerView={name,line,ok}; if(photo) 
 function setSave(line, ok){ playerView.line=line; playerView.ok=ok; paintPlayer(); }
 function paintPlayer(){ setTimeout(renderMenu,0); $('playerName').textContent=tx(playerView.name); saveStateEl.textContent=tx(playerView.line); saveStateEl.className=playerView.ok?'ok':''; }
 function snapshotState(){
-  return { v:7, base:BASE_NODES, money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
+  return { v:7, base:BASE_NODES, layout:SITES.map(s=>s.plat), money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
     nodes:nodes.slice(BASE_NODES).map(n=>[Math.round(n.x*10)/10,Math.round(n.y*10)/10]),
     edges:[...edges.values()].filter(e=>!e.internal).map(e=>[e.a,e.b,e.cost]), signals:[...signals], entry:[...entrySig], fan:[...fanPorts],
     sites:SITES.map(s=>({id:s.id,lvl:s.lvl,log:s.log,since:s.since,best:s.best,done:s.done,stock:s.stock,inbuf:s.inbuf,tm:s.tm})),
@@ -2757,7 +2774,16 @@ function clearWorld(){
 SITES.forEach(s=>{ s.plen = s.kind==='city' ? 104 : 60; s.front = s.plen/2-8; }); won=false; goalHit=false; incomeLog=[]; curRate=-1; built=0; deliveries=0; crashes=0; score=0; gameMin=360; money=START_MONEY; nextId=1;
 }
 function loadState(st){
-  if(!st || st.v!==7 || st.base!==BASE_NODES) return false;
+  if(!st || st.v!==7) return false;
+  { const oldP=st.layout || OLD_PLATS, N=SITES.length, oldBase=N+2*oldP.reduce((a,b)=>a+b,0);
+    if(st.base!==oldBase) return false;
+    if(oldBase!==BASE_NODES || oldP.some((v,i)=>v!==SITES[i].plat)){
+      const map=new Map(); for(let i=0;i<N;i++) map.set(i,SITES[i].node);
+      let id=N; SITES.forEach((s,si)=>{ for(let k=0;k<oldP[si];k++) for(const d of [0,1]){ map.set(id++, s.side[d][Math.min(k,s.plat-1)]); } });
+      const M=x=> x<oldBase ? map.get(x) : x-oldBase+BASE_NODES;
+      st.edges=(st.edges||[]).map(([a,b,c])=>[M(a),M(b),c]).filter(([a,b])=>a!==b); st.signals=(st.signals||[]).map(M); st.entry=[];
+      for(const t of st.trains||[]){ if(t.vias) t.vias=t.vias.map(v=>(v||[]).map(M)); }
+      st.base=BASE_NODES; } }
   const was=ready; ready=false; clearWorld();
   money=st.money; score=st.score||0; built=st.built||0; deliveries=st.deliveries||0; crashes=st.crashes||0; won=!!st.won; gameMin=st.gameMin||360; goalHit=!!st.goalHit; incomeLog=st.incomeLog||[]; curRate=-1;
   for(const [x,y] of st.nodes||[]) addNode(x,y);
