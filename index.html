@@ -432,6 +432,17 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .schip.big{padding:9px 14px;font-size:14.5px}
 .addstops{margin:6px 0 8px}
 .rs em{font-style:normal;opacity:.7;font-size:12px}
+.splits{display:grid;gap:6px;margin:6px 0 10px}
+.split{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--paper-2);border-radius:14px;padding:8px 12px}
+.split>span:first-child{display:flex;flex-direction:column;min-width:0}
+.split small{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--muted)}
+.split small i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.split .step{display:flex;align-items:center;gap:6px}
+.split .step button{border:0;border-radius:10px;min-width:36px;height:36px;background:#fff;font-weight:800;font-size:18px;box-shadow:0 2px 0 var(--line)}
+.split .step .n{min-width:64px;text-align:center;font-family:var(--f-display);font-size:18px}
+.split .step .n small{display:inline;font-size:12px}
+.split .autob{font-size:12px!important;min-width:auto!important;padding:0 8px;height:28px!important}
+.split .autot{font-style:normal;font-size:12px;font-weight:800;color:var(--leaf)}
 @media (prefers-reduced-motion:reduce){ .rotate svg{animation:none} }
 </style>
 
@@ -909,7 +920,7 @@ const WAGONS = {
 for(const o of [...Object.values(CARGO),...Object.values(WAGONS)]) Object.defineProperty(o,'name',{get(){ return L(...this.n); }});
 const WTYPES = Object.keys(WAGONS);
 const wagonFor = c => WTYPES.find(w => WAGONS[w].carries.includes(c));
-const COST = { track:160, tunnel:320, loco:1500, signal:600, signalBack:300, crash:5000, runPerHour:100 };
+const COST = { track:160, tunnel:320, loco:1500, signal:600, signalBack:300, crash:5000, runPerHour:100, runPerKm:5 };
 const LOCO_COLORS = ['#ff5a4f','#3d8bff','#7b6cff','#ff8a2b','#14b8a6','#ff6fb5','#3cc46f','#f59e0b'];
 const SC = 10, KM_PER_UNIT = 0.715/SC, TRAIN_KMH = 70, SPEED = TRAIN_KMH/60/KM_PER_UNIT;
 const SPEEDS=[0,1,5,15], SPEED_LABEL=['⏸','1×','5×','15×'];
@@ -1014,6 +1025,7 @@ const MOUNTAINS = [
   [13.95,49.75,16,22,0],
   [15.6,49.5,22,18,0],[15.95,49.66,20,16,0],[15.3,49.33,18,15,0]
 ].map(([lon,lat,r,h,snow]) => { const [x,y]=P(lon,lat); return {x,y,r:r*SC,h:h*1.3*Math.pow(SC/2,0.7),snow}; });
+for(const m of MOUNTAINS) for(const s of SITES){ const n=nodes[s.node], need=m.r*1.6+70, d=Math.hypot(m.x-n.x,m.y-n.y); if(d<need){ const ux=(m.x-n.x)/(d||1), uy=(m.y-n.y)/(d||1); m.x=n.x+ux*need; m.y=n.y+uy*need; } }
 const inMountains = (x,y) => MOUNTAINS.some(m => Math.hypot(m.x-x,m.y-y) < m.r*0.85);
 const RIVERS = [
   [[14.15,48.68],[14.32,48.8],[14.47,48.97],[14.4,49.3],[14.38,49.7],[14.42,50.08],[14.47,50.35]],
@@ -1099,7 +1111,7 @@ function routePath(from,to,avoid,startPrev){
       if(rev && p>=0 && v!==p){ const a=portOf.get(p), c=portOf.get(v); if(a && c && a.k!==c.k) continue; }
       if(!rev && !sw && (v===p || (p>=0 && !turnOK(p,u,v)))) continue; const kv=u+'>'+v; if(done.has(kv)) continue;
       if(thrOrigin!==null && !throatKeys.has(ekey(u,v))){ const fromPlat=nodeSite.has(thrOrigin); if(fromPlat ? nodeSite.has(v) : !nodeSite.has(v)) continue; }
-      const k=ekey(u,v); let w=edges.get(k).len; if(avoid && avoid.has(k)) w+=5000;
+      const k=ekey(u,v); let w=edges.get(k).len; if(avoid && avoid.has(k)) w+=5000; if(v!==to && nodeSite.has(v)) w+=300;
       const nd=dd.get(ku)+w; if(nd<(dd.has(kv)?dd.get(kv):Infinity)){ dd.set(kv,nd); prev.set(kv,ku); open.push([u,v],nd); } } }
   if(!endKey) return null; const path=[]; let k=endKey; while(k){ path.push(+k.split('>')[1]); k=prev.get(k); } return path.reverse();
 }
@@ -1249,7 +1261,7 @@ const stationFull=(node,tr)=>trainsAt(node).filter(o=>o!==tr).length >= nodeSite
 const stationBlock = s => s.ports.map(q=>ekey(s.node,q));
 function occupiedInto(dest,tr){ const d=nodeSite.get(dest), out=[]; if(!d) return out;
   if(tr && tr._wantK!=null && tr._wantK<d.plat){ for(let k=0;k<d.plat;k++) if(k!==tr._wantK) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; } const used=new Set(trainsAt(dest).filter(o=>o!==tr).map(o=>o.plat));
-  for(const o of trains){ if(o===tr || o._arrGrant!==dest || !o.path || o.path[o.path.length-1]!==dest) continue; const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); }   // trains already promised a track there
+  for(const o of trains){ if(o===tr) continue; if(o._pass && o._pass.node===dest) used.add(o._pass.k); if(o._arrGrant!==dest || !o.path || o.path[o.path.length-1]!==dest) continue; const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); }   // trains already promised a track there
   for(let k=0;k<d.plat;k++) if(used.has(k)) for(const dd of [0,1]) out.push(ekey(d.side[dd][k],dest)); return out; }
 function routeFromPlat(s,k,to,tr){ const own=s.ports.filter(q=>portOf.get(q).k!==k).map(q=>ekey(s.node,q));
   let r=routePath(s.node,to,new Set([...own,...occupiedInto(to,tr)])); if(!r) r=routePath(s.node,to,new Set(own));
@@ -1268,7 +1280,7 @@ function choosePlat(tr,node,to){ const s=nodeSite.get(node), used=new Set(trains
 function placeAt(tr,i){ tr.stopIdx=i; tr.at=stopNode(tr,i); tr.plat=choosePlat(tr,tr.at,tr.route.length>1?stopNode(tr,(i+1)%tr.route.length):null); tr.path=null; tr.pi=0; tr.t=0; tr.trail=[]; }
 function makeTrain(def){
   const tr={id:def.id||nextId++, name:def.name, color:def.color, consist:[...def.consist], route:[...def.route], start:def.start, every:def.every, waits:[...(def.waits||[])],
-    loads:def.consist.map(()=>null), pend:[], unl:[], st:'ready', trail:[], why:'', delay:0, cycleBase:null, smokeAcc:0, auto:!!def.auto, plats:def.plats?[...def.plats]:null, vias:def.vias?def.vias.map(a=>[...(a||[])]):null, earned:def.earned||0, ran:def.ran||0, bought:def.bought||0};
+    loads:def.consist.map(()=>null), pend:[], unl:[], st:'ready', trail:[], why:'', delay:0, cycleBase:null, smokeAcc:0, auto:!!def.auto, plats:def.plats?[...def.plats]:null, vias:def.vias?def.vias.map(a=>[...(a||[])]):null, split:def.split?def.split.map(o=>({...(o||{})})):null, earned:def.earned||0, ran:def.ran||0, bought:def.bought||0};
   if(tr.id>=nextId) nextId=tr.id+1;
   placeAt(tr,0); startLoading(tr);
   trains.push(tr); buildTrainMesh(tr); return tr;
@@ -1286,7 +1298,7 @@ function depart(tr){
     tr.why = kk>0 && nodeSite.get(from).plat>1 ? L(`z koleje ${kk} v ${sn} nevede trať do ${tn} – připoj tu kolej nebo postav výhybku`,`no line from track ${kk} at ${sn} to ${tn} – connect that track or build a switch`,`von Gleis ${kk} in ${sn} führt keine Strecke nach ${tn} – Gleis anschließen oder Weiche bauen`) : L('chybí trať','no track','kein Gleis')+' → '+tn; tr._noTrackK=null; return; }
   if(tr.stopIdx===0) tr.cycleBase=tr.plannedDep;
   tr.delay=Math.max(0,Math.round(gameMin-tr.plannedDep));
-  tr.nextIdx=next; tr.path=path; tr.pi=0; tr.t=0; tr.at=null; tr.legStart=gameMin;
+  tr.nextIdx=next; tr.path=path; tr.pi=0; tr.t=0; tr.at=null; tr.legStart=gameMin; tr.legKm=pathLen(path)*KM_PER_UNIT;
   const A=NP(path,0), B=NP(path,1), [ux,uy]=unit(A.x,A.y,B.x,B.y);
   tr.trail=[]; for(let d=0; d<=130; d+=2) tr.trail.push({x:A.x-ux*d, y:A.y-uy*d});
   tr.ang=Math.atan2(uy,ux);
@@ -1317,8 +1329,16 @@ function blockBusy(b,tr){
 function arrivalFree(tr,n,dest){ const s=nodeSite.get(n), bad=new Set(occupiedInto(dest,tr)); if(s && tr.plat>=0) s.ports.forEach(q=>{ if(portOf.get(q).k!==tr.plat) bad.add(ekey(n,q)); });
   const r=routePath(n,dest,bad); if(!r) return null; for(let i=0;i<r.length-1;i++) if(bad.has(ekey(r[i],r[i+1]))) return null; return r; }
 const ownStart=(tr,q)=>{ if(!q || q.length<2 || tr.plat<0 || !nodeSite.has(q[0])) return true; const po=portOf.get(q[1]); return !!po && po.k===tr.plat; };
+function tracksUsed(S,tr){ const used=new Set(trainsAt(S).filter(o=>o!==tr).map(o=>o.plat));
+  for(const o of trains){ if(o===tr || !o.path) continue; if(o._arrGrant===S && o.path[o.path.length-1]===S){ const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); } if(o._pass && o._pass.node===S) used.add(o._pass.k); }
+  return used; }
 function tryEnter(tr){
   let p=tr.path; const n=p[tr.pi], dest=p[p.length-1];
+  if(tr._pass && p.indexOf(tr._pass.node,tr.pi)<0) tr._pass=null;
+  { const S=blockFrom(p,tr.pi).end, j=p.indexOf(S,tr.pi+1);   // running through a station on the way
+    if(S!==dest && nodeSite.has(S) && j>0 && !(tr._pass && tr._pass.node===S)){ const q=portOf.get(p[j-1]);
+      if(q && tracksUsed(S,tr).has(q.k)){ tr.why=L(`čeká – v ${nodeSite.get(S).name} je kolej ${q.k+1} obsazená`,`waiting – track ${q.k+1} at ${nodeSite.get(S).name} is occupied`,`wartet – Gleis ${q.k+1} in ${nodeSite.get(S).name} ist belegt`); return false; }
+      if(q) tr._pass={node:S,k:q.k}; } }
   if(tr.pi===0 && isStationNode(n) && nodeSite.has(dest) && dest!==n){ const vias=(tr.vias||[])[tr.stopIdx]||[];
     if(!vias.length){ const r=arrivalFree(tr,n,dest); if(!r){ const dn=nodeSite.get(dest).name; tr.why=L(`čeká – v ${dn} není volná kolej (postav další kolej nebo výhybku)`,`waiting – no free track at ${dn} (add a track or a switch)`,`wartet – in ${dn} ist kein Gleis frei (Gleis oder Weiche bauen)`); return false; }
       if(pathLen(r)<=pathLen(p)*1.3+60){ tr.path=p=r; } tr._arrGrant=dest; } }
@@ -1371,24 +1391,25 @@ function move(tr,dt){
     if(!isStationNode(n)){ const o=trains.find(o=>o!==tr && stoppedNode(o)===n); if(o){ crash(tr,o); return; } }
     if(tr.pi>=p.length-1){ tr.t=0; arrive(tr); return; }
     const last=p[p.length-1];
-    if(signals.has(n) || entrySig.has(n) || p[tr.pi+1]===last || !edges.has(ekey(n,p[tr.pi+1]))){
+    if(signals.has(n) || entrySig.has(n) || isStationNode(n) || p[tr.pi+1]===last || !edges.has(ekey(n,p[tr.pi+1]))){
       const rem=tr.t; tr.t=0; if(!tryEnter(tr)){ tr.st='hold'; tr.check=1; return; } tr.t=rem; p=tr.path;
     } else { const B=nodes[p[tr.pi+1]], A=nodes[n]; tr.ang=Math.atan2(B.y-A.y,B.x-A.x); }
     a=p[tr.pi]; b=p[tr.pi+1]; L=segLen(p,tr.pi);
   }
 }
 function arrive(tr){
-  tr._arrGrant=null;
+  tr._arrGrant=null; tr._pass=null;
   for(const x of (tr.relq||[])) if(occ.get(x.k)===tr.id) occ.delete(x.k); tr.relq=[];
   const node=tr.path[tr.path.length-1], s=nodeSite.get(node);
   let idx=tr.nextIdx; if(tr.route[idx]!==s.id) idx=tr.route.indexOf(s.id);
   const via=portOf.get(tr.path[tr.path.length-2]); tr.face = via ? -via.dir : 1; tr.path=null; tr.at=node; tr.plat = via && via.k!=null ? via.k : freePlat(node,tr); tr.st='dwell'; tr.trail=[]; tr.stopIdx=idx; tr.why=''; tr._floatN=0;
-  if(tr.legStart!=null){ const run=Math.round((gameMin-tr.legStart)/60*COST.runPerHour); tr.legStart=null; if(run>0){ setMoney(money-run); runCosts+=run; logIncome(-run); tr.ran=(tr.ran||0)+run; const nd=nodes[node]; floatText(nd.x,nd.y,'−'+num(run)+' '+COIN()+' '+L('za jízdu','running','Fahrt'),true); } }
+  if(tr.legStart!=null){ const run=Math.round((tr.legKm||0)*COST.runPerKm); tr.legStart=null; if(run>0){ setMoney(money-run); runCosts+=run; logIncome(-run); tr.ran=(tr.ran||0)+run; const nd=nodes[node]; floatText(nd.x,nd.y,'−'+num(run)+' '+COIN()+' '+L('za jízdu','running','Fahrt'),true); } }
   let tu=0; tr.unl=[];
   if(idx>=0){ const by={}; tr.loads.forEach((l,i)=>{ if(l && accepts(s,l.c)) (by[l.c]=by[l.c]||[]).push(i); });
     const n=tr.route.length;
     for(const c in by){ let later=0; for(let d=1; d<n; d++){ const t=site(tr.route[(idx+d)%n]); if(isSourceOf(t,c)) break; if(acceptList(t).includes(c)) later++; }
-      const take = later ? Math.ceil(by[c].length/(later+1)) : by[c].length;   // leave some for the next stops that need it too
+      const want=tr.split&&tr.split[idx]?tr.split[idx][c]:null;
+      const take = want!=null ? Math.min(want,by[c].length) : (later ? Math.ceil(by[c].length/(later+1)) : by[c].length);   // leave some for the next stops that need it too
       tr.unl.push(...by[c].slice(0,take)); } }
   tr.phase='unload'; tr.phaseLeft=STOP_UNLOAD;
 }
@@ -1788,7 +1809,6 @@ const IND={
     g.add(mesh(box,mat('#f4f6f7'),-30,7,14,12,14,10)); g.add(mesh(box,M.glass,-30,8,19.1,10,10,0.3,false)); g.add(mesh(box,M.skoda,-30,15.5,19.2,11,3,0.4,false)); g.add(mesh(box,M.white,-30,15.5,19.45,8,1,0.1,false));
     g.add(mesh(box,mat('#5b6472'),8,0.25,18,46,0.5,20,false)); const cc=['#4ba82e','#ffffff','#2b2f36','#c8262c','#3d8bff','#9aa6b4','#f2c200','#4ba82e'];
     for(let r=0;r<4;r++) for(let i=0;i<10;i++){ const k=(r*10+i)%cc.length; const car=new T.Group(); car.position.set(-12+i*4.4,0,10+r*5); car.add(mesh(box,mat(cc[k]),0,1.2,0,3.4,1.2,1.9,false)); car.add(mesh(box,M.glass,-0.2,2.1,0,2,0.8,1.7,false)); g.add(car); }
-    const tt=new T.Mesh(new T.TorusGeometry(14,1.6,4,40),mat('#5b6472')); tt.rotation.x=-Math.PI/2; tt.scale.set(1.6,1,1); tt.position.set(46,0.3,10); g.add(tt);
     chimney(g,36,-18,26,1.4); g.userData.big=true; },
   plzen(g){ hall(g,-6,0,22,14,12,'#c9674a','#8c4a36'); for(let i=0;i<3;i++){ g.add(mesh(cyl,M.copper,10+i*7,5,-4,3,10,3)); g.add(mesh(sph,M.copper,10+i*7,10,-4,3,2.4,3)); }
     chimney(g,-14,-6,28,1.6,'#c9674a'); const a=new T.Group(); a.position.set(6,0,12); a.add(mesh(box,mat('#efe6d2'),-5,5,0,3,10,3)); a.add(mesh(box,mat('#efe6d2'),5,5,0,3,10,3)); a.add(mesh(box,mat('#efe6d2'),0,11,0,14,3,3.2)); g.add(a); },
@@ -2240,7 +2260,7 @@ function scheduleHtml(tr,pl){ if(!pl.ok) return ''; const E=tr.every*60; let bas
   return `<table class="tt mini"><tbody>`+tr.route.map((sid,i)=>`<tr${tr.at===site(sid).node?' class="here"':''}><td class="n">${site(sid).name}</td><td><small>${L('příj.','arr.','an')}</small>${i?hm(base+pl.arr[i]):'–'}</td><td><small>${L('odj.','dep.','ab')}</small>${hm(base+pl.dep[i])}</td></tr>`).join('')+
     `<tr><td class="n">${site(tr.route[0]).name} ↩</td><td><small>${L('příj.','arr.','an')}</small>${hm(base+pl.arr[0])}</td><td><small>${L('další','next','nächste')}</small>${hm(base+E)}</td></tr></tbody></table>`; }
 function trainCardHtml(tr){
-  const pl=planOf(tr), tot=pl.ok?pl.legs.reduce((a,l)=>a+l.travel,0):0, per=pl.ok?incomeEstimate(tr)-Math.round(tot/60*COST.runPerHour):0, bal=(tr.earned||0)-(tr.ran||0), good=(tr.earned||0)>0||tr.ran>0 ? bal>=0 : per>=0;
+  const pl=planOf(tr), tot=pl.ok?pl.legs.reduce((a,l)=>a+l.km,0):0, per=pl.ok?incomeEstimate(tr)-Math.round(tot*COST.runPerKm):0, bal=(tr.earned||0)-(tr.ran||0), good=(tr.earned||0)>0||tr.ran>0 ? bal>=0 : per>=0;
   return `<header><i class="dot" style="background:${tr.color}"></i><div><h2>${esc(tr.name)}</h2><small>${tr.route.map(id=>site(id).name).join(' → ')} ↩</small></div><span class="verdict ${good?'ok':'bad'}">${good?L('vydělává','profitable','rentabel'):L('prodělává','losing money','verlustreich')}</span></header>
   ${trainStrip(tr,false)}<p class="sub">${statusText(tr)}</p>${countdownHtml(tr)}${scheduleHtml(tr,pl)}
   <div class="tcnums"><div><small>${L('vydělal','earned','verdient')}</small><b class="okc">+${num(tr.earned||0)}</b></div><div><small>${L('jízda stála','running cost','Fahrtkosten')}</small><b class="warn">−${num(tr.ran||0)}</b></div><div><small>${L('bilance','balance','Bilanz')}</small><b class="${bal>=0?'okc':'warn'}">${bal>=0?'+':'−'}${num(Math.abs(bal))}</b></div></div>
@@ -2369,9 +2389,9 @@ sheet.addEventListener('pointerdown',()=>{ sheetTouchAt=performance.now(); });
 const consistMini = tr => tr.consist.map((w,i)=>`<i title="${WAGONS[w].name}" style="background:${tr.loads&&tr.loads[i]?CARGO[tr.loads[i].c].color:WAGONS[w].color};${tr.loads&&tr.loads[i]?'':'opacity:.45'}"></i>`).join('');
 function trainsHtml(){
   let h=`<h2>${L('Vlaky','Trains','Züge')}</h2><p class="sub">${L(
-    `Lokomotiva ${fmtK(COST.loco)}, vozy 250 až 900 mincí. Vyložený vůz vynese podle zboží a vzdálenosti, lidé a pošta málo, víno a auta hodně, jízda stojí ${COST.runPerHour} mincí za hodinu. Vlak jezdí po své trase dokola a odjíždí podle jízdního řádu.`,
-    `Locomotive ${fmtK(COST.loco)}, wagons 250 to 900 coins. An unloaded wagon earns by cargo and distance: people and mail little, wine and cars a lot, running costs ${COST.runPerHour} coins per hour. A train loops along its route and leaves according to its timetable.`,
-    `Lok ${fmtK(COST.loco)}, Wagen 250 bis 900 Münzen. Ein entladener Wagen bringt je nach Ware und Entfernung: Personen und Post wenig, Wein und Autos viel, die Fahrt kostet ${COST.runPerHour} Münzen pro Stunde. Ein Zug fährt seine Strecke im Kreis und nach Fahrplan.`)}</p><div class="actions"><button class="btn" data-open="new">+ ${L('Nový vlak','New train','Neuer Zug')}</button><button class="btn ghost" data-plans>${L('Jízdní řády a střety','Timetables and conflicts','Fahrpläne und Konflikte')}</button></div>`;
+    `Lokomotiva ${fmtK(COST.loco)}, vozy 250 až 900 mincí. Vyložený vůz vynese podle zboží a vzdálenosti, lidé a pošta málo, víno a auta hodně, jízda stojí ${COST.runPerKm} mincí za každý ujetý km. Vlak jezdí po své trase dokola a odjíždí podle jízdního řádu.`,
+    `Locomotive ${fmtK(COST.loco)}, wagons 250 to 900 coins. An unloaded wagon earns by cargo and distance: people and mail little, wine and cars a lot, running costs ${COST.runPerKm} coins per kilometre. A train loops along its route and leaves according to its timetable.`,
+    `Lok ${fmtK(COST.loco)}, Wagen 250 bis 900 Münzen. Ein entladener Wagen bringt je nach Ware und Entfernung: Personen und Post wenig, Wein und Autos viel, die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer. Ein Zug fährt seine Strecke im Kreis und nach Fahrplan.`)}</p><div class="actions"><button class="btn" data-open="new">+ ${L('Nový vlak','New train','Neuer Zug')}</button><button class="btn ghost" data-plans>${L('Jízdní řády a střety','Timetables and conflicts','Fahrpläne und Konflikte')}</button></div>`;
   for(const tr of trains) h+=`<div class="row"><i style="background:${tr.color}"></i><div><b>${esc(tr.name)} · ${tr.route.map(id=>site(id).name).join(' → ')}</b><small class="${statusCls(tr)}">${statusText(tr)}</small><div class="ministrip">${trainStrip(tr,false)}</div></div><button class="btn small ghost" data-open="${tr.id}">${L('Upravit','Edit','Bearbeiten')}</button></div>`;
   if(!trains.length) h+=`<p class="sub">${L('Zatím nemáš žádný vlak. Nejdřív postav trať mezi dvěma stanicemi.','You have no trains yet. First build a line between two stations.','Du hast noch keinen Zug. Baue zuerst eine Strecke zwischen zwei Bahnhöfen.')}</p>`;
   return h+`<div class="actions"><button class="btn ghost" data-close>${L('Zavřít','Close','Schließen')}</button></div>`;
@@ -2383,7 +2403,7 @@ const showTrains=()=>openSheet(trainsHtml(),'trains');
 let draft=null;
 function openEditor(id, firstStop){
   const tr = id ? trains.find(t=>t.id===id) : null;
-  if(tr) draft={id:tr.id, plats:tr.plats?[...tr.plats]:null, vias:tr.vias?tr.vias.map(a=>[...(a||[])]):null, name:tr.name, color:tr.color, consist:[...tr.consist], route:[...tr.route], start:tr.start, every:tr.every, waits:[...tr.waits], orig:[...tr.consist], manual:!tr.auto};
+  if(tr) draft={id:tr.id, split:tr.split?tr.split.map(o=>({...(o||{})})):null, plats:tr.plats?[...tr.plats]:null, vias:tr.vias?tr.vias.map(a=>[...(a||[])]):null, name:tr.name, color:tr.color, consist:[...tr.consist], route:[...tr.route], start:tr.start, every:tr.every, waits:[...tr.waits], orig:[...tr.consist], manual:!tr.auto};
   else { const st=Math.ceil(gameMin%1440+STOP_LOAD+1)%1440; draft={id:0, name:L('Vlak','Train','Zug')+' '+nextId, color:LOCO_COLORS[(nextId-1)%LOCO_COLORS.length], consist:[], route:firstStop?[firstStop]:[], start:st, every:2, waits:firstStop?[0]:[], orig:[], manual:false}; }
   openSheet(edHtml(),'editor');
 }
@@ -2471,10 +2491,13 @@ function edHtml(){
   const fit=WTYPES.filter(w=>useful.has(w)), rest=WTYPES.filter(w=>!useful.has(w));
   h+=`<div class="addgrid2">${fit.map(card).join('')}</div>`;
   if(rest.length) h+=`<details class="more"><summary>${L('Ostatní vozy (na téhle trase nic nevezou)','Other wagons (nothing to carry on this route)','Andere Wagen (auf dieser Strecke ohne Fracht)')}</summary><div class="addgrid2">${rest.map(card).join('')}</div></details>`;
+  // 2b · where each good gets unloaded, when several stops want it
+  { const rows=splitRows(d); if(rows.length){ h+=`<h3 class="stepn"><span>⇣</span>${L('Kde kolik vyložit','Where to unload how much','Wo wie viel entladen')}</h3><p class="sub">${L('Více zastávek chce stejné zboží. Urči, kolik vozů se kde vyloží – zbytek jede dál.','Several stops want the same goods. Choose how many wagons are unloaded where – the rest travels on.','Mehrere Halte wollen dieselbe Ware. Lege fest, wie viele Wagen wo entladen werden – der Rest fährt weiter.')}</p><div class="splits">`+
+      rows.map(r=>`<div class="split"><span><b>${r.i+1}. ${site(d.route[r.i]).name}</b><small><i style="background:${CARGO[r.c].color}"></i>${CARGO[r.c].name}</small></span><span class="step"><button data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="-1" data-max="${r.max}" aria-label="${L('méně','fewer','weniger')}">−</button><b class="n">${r.val} <small>${L('z','of','von')} ${r.max}</small></b><button data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="1" data-max="${r.max}" aria-label="${L('více','more','mehr')}">+</button>${r.auto?`<em class="autot">auto</em>`:`<button class="autob" data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="auto" data-max="${r.max}">auto</button>`}</span></div>`).join('')+`</div>`; } }
   // 3 · money and timetable
   if(pl.ok){
-    const E=d.every*60, tot=pl.legs.reduce((s,l)=>s+l.travel,0), runCost=Math.round(tot/60*COST.runPerHour), inc=incomeEstimate(d);
-    h+=`<h3 class="stepn"><span>3</span>${L('Vyplatí se to?','Is it worth it?','Lohnt es sich?')}</h3><div class="econ"><div><small>${L('vydělá za otočku','earns per round trip','verdient pro Umlauf')}</small><b class="okc">+${fmtK(inc)}</b></div><div><small>${L('jízda','running','Fahrt')} ${fmtDur(tot)}</small><b class="warn">−${fmtK(runCost)}</b></div></div>`;
+    const E=d.every*60, tot=pl.legs.reduce((s,l)=>s+l.travel,0), totKm=pl.legs.reduce((s,l)=>s+l.km,0), runCost=Math.round(totKm*COST.runPerKm), inc=incomeEstimate(d);
+    h+=`<h3 class="stepn"><span>3</span>${L('Vyplatí se to?','Is it worth it?','Lohnt es sich?')}</h3><div class="econ"><div><small>${L('vydělá za otočku','earns per round trip','verdient pro Umlauf')}</small><b class="okc">+${fmtK(inc)}</b></div><div><small>${L('jízda','running','Fahrt')} ${Math.round(totKm)} km · ${fmtDur(tot)}</small><b class="warn">−${fmtK(runCost)}</b></div></div>`;
     h+=`<p class="sub">${L(`Odjede v ${hm(d.start)} z ${site(d.route[0]).name} a jezdí dokola ${everyLabel(d.every)}.`,`Leaves ${site(d.route[0]).name} at ${hm(d.start)} and loops ${everyLabel(d.every)}.`,`Fährt um ${hm(d.start)} ab ${site(d.route[0]).name} und pendelt ${everyLabel(d.every)}.`)}</p>`;
     h+=`<details class="more"><summary>${L('Upravit jízdní řád','Edit timetable','Fahrplan bearbeiten')}</summary>`;
     h+=`<div class="timebox"><span class="sub">${L('Odjezd','Departure','Abfahrt')} · ${site(d.route[0]).name}</span><span class="step"><button data-ed="t" data-v="-60">−1 h</button><button data-ed="t" data-v="-15">−15</button></span><span class="big">${hm(d.start)}</span><span class="step"><button data-ed="t" data-v="15">+15</button><button data-ed="t" data-v="60">+1 h</button></span></div>`;
@@ -2497,17 +2520,25 @@ function edHtml(){
   return h;
 }
 const sellValue = d => Math.round((COST.loco + consistPrice(d.orig&&d.orig.length?d.orig:d.consist))*0.5);
+function wagonsFor(d,c){ return d.consist.filter(w=>WAGONS[w].carries.includes(c)).length; }
+function autoTake(d,i,c){ const n=d.route.length, have=wagonsFor(d,c); let later=0; for(let k=1;k<n;k++){ const t=site(d.route[(i+k)%n]); if(isSourceOf(t,c)) break; if(acceptList(t).includes(c)) later++; } return later?Math.ceil(have/(later+1)):have; }
+function splitRows(d){ const out=[], n=d.route.length; if(n<2) return out;
+  for(const c of Object.keys(CARGO)){ const max=wagonsFor(d,c); if(!max) continue; if(!d.route.some(id=>isSourceOf(site(id),c))) continue;
+    const acc=d.route.map((id,i)=>i).filter(i=>acceptList(site(d.route[i])).includes(c) && !isSourceOf(site(d.route[i]),c)); if(acc.length<2) continue;
+    for(const i of acc){ const v=d.split&&d.split[i]?d.split[i][c]:null; out.push({i,c,max,val:v!=null?v:autoTake(d,i,c),auto:v==null}); } }
+  return out; }
 function edAction(b){
   const d=draft, a=b.dataset.ed; d.justAdded=false;
   if(a==='addw' && d.consist.length<8){ d.consist.push(b.dataset.w); d.justAdded=true; }
   else if(a==='sug'){ d.route=[b.dataset.a,b.dataset.b]; d.waits=[0,0]; if(!d.id||!d.consist.length) autoConsist(d); }
   else if(a==='clr'){ d.route=[]; d.waits=[]; }
   else if(a==='addon'){ d.adding=true; }
+  else if(a==='sp'){ const i=+b.dataset.i, c=b.dataset.c, max=+b.dataset.max; d.split=d.split||d.route.map(()=>({})); d.split[i]=d.split[i]||{}; if(b.dataset.v==='auto') delete d.split[i][c]; else { const cur=d.split[i][c]!=null?d.split[i][c]:autoTake(d,i,c); d.split[i][c]=Math.max(0,Math.min(max,cur+(+b.dataset.v))); } }
   else if(a==='addoff'){ d.adding=false; }
-  else if(a==='mirror'){ const back=d.route.slice(1,-1).reverse(); d.route.push(...back); back.forEach(()=>d.waits.push(0)); d.plats=null; d.vias=null; fitEvery(d); }
+  else if(a==='mirror'){ const back=d.route.slice(1,-1).reverse(); d.route.push(...back); back.forEach(()=>d.waits.push(0)); d.plats=null; d.vias=null; d.split=null; fitEvery(d); }
   else if(a==='delw') d.consist.splice(+b.dataset.i,1);
-  else if(a==='adds'){ d.route.push(b.dataset.s); d.plats=null; d.vias=null; d.adding=true; if(d.route.length===2 && !d.consist.length) autoConsist(d); fitEvery(d); }
-  else if(a==='dels'){ const i=+b.dataset.i; d.route.splice(i,1); d.waits.splice(i,1); d.plats=null; d.vias=null; for(let j=d.route.length-1;j>0;j--) if(d.route[j]===d.route[j-1]){ d.route.splice(j,1); d.waits.splice(j,1); } if(d.route.length>1 && d.route[0]===d.route[d.route.length-1]){ d.route.pop(); d.waits.pop(); } }
+  else if(a==='adds'){ d.route.push(b.dataset.s); d.plats=null; d.vias=null; d.adding=true; d.split=null; if(d.route.length===2 && !d.consist.length) autoConsist(d); fitEvery(d); }
+  else if(a==='dels'){ const i=+b.dataset.i; d.route.splice(i,1); d.waits.splice(i,1); d.plats=null; d.vias=null; d.split=null; for(let j=d.route.length-1;j>0;j--) if(d.route[j]===d.route[j-1]){ d.route.splice(j,1); d.waits.splice(j,1); } if(d.route.length>1 && d.route[0]===d.route[d.route.length-1]){ d.route.pop(); d.waits.pop(); } }
   else if(a==='t'){ d.start=((d.start+(+b.dataset.v))%1440+1440)%1440; d.manual=true; }
   else if(a==='ev'){ d.every=+b.dataset.v; d.manual=true; }
   else if(a==='w'){ const i=+b.dataset.i; d.waits[i]=Math.max(0,(d.waits[i]||0)+(+b.dataset.v)); }
@@ -2520,13 +2551,13 @@ function edAction(b){
 function fitEvery(d,shrink){ const pl=planOf(d); if(!pl.ok) return; if(shrink){ d.every=Math.ceil(pl.cycle+0.5)/60; return; } if(pl.cycle>d.every*60){ const e=[...EVERY].reverse().find(e=>e*60>=pl.cycle); d.every=e||24; } }
 function saveDraft(){
   const d=draft, pr=draftPrice(d);
-  if(!d.id){ setMoney(money-pr.cost); const tr=makeTrain({name:d.name,color:d.color,consist:d.consist,route:d.route,start:d.start,every:d.every,waits:d.waits,bought:pr.cost,auto:!d.manual,plats:d.plats||null,vias:d.vias||null});
+  if(!d.id){ setMoney(money-pr.cost); const tr=makeTrain({name:d.name,color:d.color,consist:d.consist,route:d.route,start:d.start,every:d.every,waits:d.waits,bought:pr.cost,auto:!d.manual,plats:d.plats||null,vias:d.vias||null,split:d.split||null});
     toast(L(`${tr.name} nakládá ve stanici ${site(tr.route[0]).name}, odjezd v ${hm(tr.depAt)}.`,`${tr.name} is loading at ${site(tr.route[0]).name}, departs at ${hm(tr.depAt)}.`,`${tr.name} lädt in ${site(tr.route[0]).name}, Abfahrt um ${hm(tr.depAt)}.`),'good',4200);
     dirty(); closeSheet(); const n0=nodes[site(tr.route[0]).node]; target.x=n0.x-CX; target.z=n0.y-CZ; camD=Math.min(camD,520); updateCamera(); return; }
   else { const tr=trains.find(t=>t.id===d.id); if(!tr){ showTrains(); return; }
     setMoney(money-pr.cost+pr.refund);
     const oldLoads=tr.loads; tr.consist=[...d.consist]; tr.loads=tr.consist.map((w,i)=>oldLoads[i] && WAGONS[w].carries.includes(oldLoads[i].c) ? oldLoads[i] : null);
-    const routeChanged = tr.route.join()!==d.route.join(); tr.route=[...d.route]; tr.start=d.start; tr.every=d.every; tr.waits=[...d.waits]; tr.auto=!d.manual; tr.plats=d.plats||null; tr.vias=d.vias||null;
+    const routeChanged = tr.route.join()!==d.route.join(); tr.route=[...d.route]; tr.start=d.start; tr.every=d.every; tr.waits=[...d.waits]; tr.auto=!d.manual; tr.plats=d.plats||null; tr.vias=d.vias||null; tr.split=d.split||null;
     if(routeChanged){ tr.cycleBase=null; if(tr.at!=null){ const i=tr.route.indexOf(nodeSite.get(tr.at).id); if(i>=0){ tr.stopIdx=i; } else { tr.stopIdx=tr.route.length-1; } if(tr.st==='ready'){ tr.depAt=tr.plannedDep=(tr.stopIdx===0?nextSlot(tr,gameMin):gameMin); } } else tr.nextIdx=-1; }
     else if(tr.st==='ready' && tr.stopIdx===0){ tr.depAt=tr.plannedDep=nextSlot(tr,gameMin); }
     buildTrainMesh(tr); toast(L(`${tr.name} má nový jízdní řád.`,`${tr.name} has a new timetable.`,`${tr.name} hat einen neuen Fahrplan.`),'good'); }
@@ -2586,9 +2617,9 @@ function showIntro(resumed){
   openSheet(`${langChips()}<span class="eyebrow">${L('Level 1 z 50','Level 1 of 50','Level 1 von 50')}</span><h2>${L('Česko','Czechia','Tschechien')}</h2>
   <p>${L(`Praha je na úrovni 1/3 a potřebuje <b>turisty</b> a <b>vodu</b>. Máš ${fmtK(START_MONEY)}.`,`Prague is at level 1/3 and needs <b>tourists</b> and <b>water</b>. You have ${fmtK(START_MONEY)}.`,`Prag ist auf Stufe 1/3 und braucht <b>Touristen</b> und <b>Wasser</b>. Du hast ${fmtK(START_MONEY)}.`)}</p>
   <ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol>
-  <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti, cena v seznamu platí pro 100 km. Jízda stojí ${COST.runPerHour} mincí za hodinu a hodina trvá ve hře minutu, takže 10 minut jízdy je 1 000 mincí. Tlačítkem 1× čas zrychlíš nebo zastavíš.`,
-    `A wagon earns by cargo and distance; listed prices are for 100 km. Running costs ${COST.runPerHour} coins per hour, and one game hour lasts one real minute, so 10 minutes of running is 1,000 coins. The 1× button speeds time up or pauses it.`,
-    `Ein Wagen verdient je nach Ware und Entfernung; die Preise gelten für 100 km. Die Fahrt kostet ${COST.runPerHour} Münzen pro Stunde, und eine Spielstunde dauert eine Minute, also kosten 10 Minuten Fahrt 1.000 Münzen. Mit der Taste 1× beschleunigst oder pausierst du die Zeit.`)}</p>
+  <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti, cena v seznamu platí pro 100 km. Jízda stojí ${COST.runPerKm} mincí za každý ujetý kilometr, takže 100 km stojí 500 mincí. Tlačítkem 1× čas zrychlíš nebo zastavíš.`,
+    `A wagon earns by cargo and distance; listed prices are for 100 km. Running costs ${COST.runPerKm} coins per kilometre, so 100 km costs 500 coins. The 1× button speeds time up or pauses it.`,
+    `Ein Wagen verdient je nach Ware und Entfernung; die Preise gelten für 100 km. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer, 100 km kosten also 500 Münzen. Mit der Taste 1× beschleunigst oder pausierst du die Zeit.`)}</p>
   <div class="actions"><button class="btn" data-close>${L('Jdu stavět','Start building','Los geht’s')}</button></div>`,'intro');
 }
 function showWin(){
@@ -2709,7 +2740,7 @@ function snapshotState(){
     nodes:nodes.slice(BASE_NODES).map(n=>[Math.round(n.x*10)/10,Math.round(n.y*10)/10]),
     edges:[...edges.values()].filter(e=>!e.internal).map(e=>[e.a,e.b,e.cost]), signals:[...signals], entry:[...entrySig], fan:[...fanPorts],
     sites:SITES.map(s=>({id:s.id,lvl:s.lvl,log:s.log,since:s.since,best:s.best,done:s.done,stock:s.stock,inbuf:s.inbuf,tm:s.tm})),
-    trains:trains.map(t=>({id:t.id,auto:t.auto,plats:t.plats,vias:t.vias,name:t.name,color:t.color,consist:t.consist,route:t.route,start:t.start,every:t.every,waits:t.waits,earned:t.earned||0,ran:t.ran||0,bought:t.bought||0})), savedAt:new Date().toISOString() };
+    trains:trains.map(t=>({id:t.id,auto:t.auto,plats:t.plats,vias:t.vias,split:t.split||null,name:t.name,color:t.color,consist:t.consist,route:t.route,start:t.start,every:t.every,waits:t.waits,earned:t.earned||0,ran:t.ran||0,bought:t.bought||0})), savedAt:new Date().toISOString() };
 }
 function clearWorld(){
   for(const t of trains) removeTrainMesh(t); trains=[]; occ.clear(); edges.clear(); adj.clear(); signals.clear(); entrySig.clear(); anchor=null; history.length=0; renderUndo(); netVer++;
@@ -2862,7 +2893,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
       <ol>${introItems().map(x=>`<li>${x}</li>`).join('')}
       <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
-      <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerHour} mincí za herní hodinu, ta trvá minutu.`,`A wagon earns by cargo and distance. Running costs ${COST.runPerHour} coins per game hour, which lasts a minute.`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerHour} Münzen pro Spielstunde, die eine Minute dauert.`)}</p>`; }
+      <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerKm} mincí za každý ujetý km (100 km = 500 mincí).`,`A wagon earns by cargo and distance. Running costs ${COST.runPerKm} coins per kilometre (100 km = 500 coins).`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer (100 km = 500 Münzen).`)}</p>`; }
   else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn()}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
       <p>${L('Hra se dá nainstalovat jen z prohlížeče Chrome (Android) nebo Safari (iPhone). Když ji otevřeš z jiné aplikace, třeba z Messengeru nebo Clauda, běží v jejich okně a instalace tam nejde.','The game can only be installed from Chrome (Android) or Safari (iPhone). Opened from another app, such as Messenger or Claude, it runs in that app’s window where installing is not possible.','Das Spiel lässt sich nur aus Chrome (Android) oder Safari (iPhone) installieren. Aus einer anderen App geöffnet, etwa Messenger oder Claude, läuft es in deren Fenster, und dort geht keine Installation.')}</p>
       <ol><li>${L('Zkopíruj si odkaz na hru a vlož ho do Chromu (na iPhonu do Safari).','Copy the game link and paste it into Chrome (Safari on iPhone).','Kopiere den Spiellink und füge ihn in Chrome ein (Safari auf dem iPhone).')}</li>
