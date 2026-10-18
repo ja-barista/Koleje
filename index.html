@@ -1404,6 +1404,8 @@ function tryEnter(tr){
     blk.edges.forEach(k=>occ.set(k,tr.id));
   }
   if(tr.pi===0 && isStationNode(n)) tr.plat=-1;
+  { const keep=new Set((tr.relq||[]).map(x=>x.k)); const bb=blockFrom(p,tr.pi); bb.edges.forEach(k=>keep.add(k)); if(tr.pi>0) keep.add(ekey(p[tr.pi-1],n));
+    for(const [k,v] of [...occ]) if(v===tr.id && !keep.has(k)) occ.delete(k); }
   const B=nodes[p[tr.pi+1]], A=nodes[n]; tr.ang=Math.atan2(B.y-A.y,B.x-A.x); tr.why=''; return true;
 }
 const trainLen = o => 12.6+o.consist.length*11.6;
@@ -1422,6 +1424,9 @@ function move(tr,dt){
     const k=ekey(a,b); (tr.relq||(tr.relq=[])).push({k, d:(tr.odo||0)-(tr.t-L)+trainLen(tr)+6});
     tr.loads.forEach(l=>{ if(l) l.km+=L*KM_PER_UNIT; });
     tr.t-=L; tr.pi++; const n=p[tr.pi];
+    if(tr.pi<p.length-1){ const nb=p[tr.pi+1], nk=ekey(n,nb), own=occ.get(nk);
+      if((own!==undefined && own!==tr.id) || trains.some(o=>o!==tr && o.path && (o.st==='run'||o.st==='hold') && curEdge(o)===nk && o.path[o.pi]===nb)){
+        tr.t=0; tr.st='hold'; tr.check=1; tr.why=L('čeká – kolej před ním je obsazená','waiting – the track ahead is occupied','wartet – das Gleis vor ihm ist belegt'); return; } }
     if(!isStationNode(n)){ const o=trains.find(o=>o!==tr && stoppedNode(o)===n); if(o){ crash(tr,o); return; } }
     if(tr.pi>=p.length-1){ tr.t=0; arrive(tr); return; }
     const last=p[p.length-1];
