@@ -1245,18 +1245,28 @@ function predict(list, from, to){
     } }
   return {trav,visits};
 }
+// is there a second way round the single-track stretch that contains this edge?
+function canPass(ek){ const e=edges.get(ek); if(!e || e.internal) return true; const chain=new Set([ek]);
+  const walk=(from,to)=>{ let p=from, u=to; for(let g=0; g<400; g++){ if(nodeSite.has(u)||portOf.has(u)) return u; const nb=[...(adj.get(u)||[])].filter(x=>x!==p); if(nb.length!==1) return u; chain.add(ekey(u,nb[0])); p=u; u=nb[0]; } return u; };
+  const A=walk(e.b,e.a), B=walk(e.a,e.b); if(A===B) return true;
+  const r=routePath(A,B,chain); if(!r) return false; for(let i=0;i<r.length-1;i++) if(chain.has(ekey(r[i],r[i+1]))) return false; return true; }
 function conflicts(list, from, to){
   const {trav,visits}=predict(list,from,to), out=[], seen=new Set();
-  for(const arr of trav.values()){ for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++){ const a=arr[i], b=arr[j];
+  const passOK=new Map();
+  for(const [ek,arr] of trav){ for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++){ const a=arr[i], b=arr[j];
     if(a.tr===b.tr || a.dir===b.dir || !(a.t0<b.t1 && b.t0<a.t1)) continue;
     const k1=[a.tr.id,a.base,a.leg.from,b.tr.id,b.base,b.leg.from].join('/'), k2=[b.tr.id,b.base,b.leg.from,a.tr.id,a.base,a.leg.from].join('/');
-    if(seen.has(k1)||seen.has(k2)) continue; seen.add(k1);
-    out.push({kind:a.prot&&b.prot?'wait':'crash', t:Math.max(a.t0,b.t0), a, b, trs:[a.tr,b.tr]}); } }
+    if(seen.has(k1)||seen.has(k2)) continue;
+    const lk=a.tr.route[a.leg.from]+'>'+a.tr.route[a.leg.to];
+    if(!passOK.has(lk)){ const r=routePath(site(a.tr.route[a.leg.from]).node,site(a.tr.route[a.leg.to]).node); let ok=false; if(r) for(let q=0;q<r.length-1 && !ok;q++){ const k=ekey(r[q],r[q+1]); const ed=edges.get(k); if(ed && !ed.internal && canPass(k)) ok=true; } passOK.set(lk,ok); }
+    if(passOK.get(lk)) continue;   // the line has a passing loop or a second track: one train waits there and they go past each other
+    seen.add(k1); out.push({kind:'wait', t:Math.max(a.t0,b.t0), a, b, trs:[a.tr,b.tr]}); } }
   for(const [node,vs] of visits){ const s=nodeSite.get(node), ev=[]; vs.forEach(v=>{ ev.push([v.a,1,v]); ev.push([v.d,-1,v]); });
     ev.sort((x,y)=>x[0]-y[0]||x[1]-y[1]); const act=new Set(); let flagged=false;
     for(const [t,dl,v] of ev){ if(dl>0) act.add(v); else act.delete(v);
-      if(act.size>s.plat && !flagged && t>=from){ out.push({kind:'plat',t,site:s,n:act.size,trs:[...act].map(x=>x.tr)}); flagged=true; }
-      if(act.size<=s.plat) flagged=false; } }
+      const nTr=new Set([...act].map(x=>x.tr)).size;
+      if(nTr>s.plat && !flagged && t>=from){ out.push({kind:'plat',t,site:s,n:nTr,trs:[...new Set([...act].map(x=>x.tr))]}); flagged=true; }
+      if(nTr<=s.plat) flagged=false; } }
   out.sort((x,y)=>x.t-y.t);
   const grouped=[], gi=new Map();
   for(const c of out){ const k = c.kind==='plat' ? 'p'+c.site.id : [c.kind,...[[c.a.tr.id,c.a.leg.from],[c.b.tr.id,c.b.leg.from]].sort().flat()].join('/');
@@ -1266,9 +1276,9 @@ function conflicts(list, from, to){
 const legName = x => `${site(x.tr.route[x.leg.from]).name} → ${site(x.tr.route[x.leg.to]).name}`;
 const moreTimes = c => c.times && c.times.length>1 ? `<br><span class="more">${L('Opakuje se','Repeats','Wiederholt sich')}: ${c.times.slice(1,5).map(hm).join(', ')}${c.times.length>5?' …':''}</span>` : '';
 function conflictHtml(c){
-  if(c.kind==='plat') return `<div class="alert"><b>${hm(c.t)}</b> · ${L(`Ve stanici ${c.site.name} bude ${c.n} vlaků, ale jen ${c.site.plat} ${kolej(c.site.plat)}. Jeden počká před stanicí a další vlak ho může zezadu dojet.`,
-    `${c.site.name} will have ${c.n} trains but only ${c.site.plat} ${kolej(c.site.plat)}. One will wait outside the station and the next train may run into it from behind.`,
-    `In ${c.site.name} stehen dann ${c.n} Züge, aber es gibt nur ${c.site.plat} ${kolej(c.site.plat)}. Einer wartet vor dem Bahnhof, und der nächste Zug kann auffahren.`)}${moreTimes(c)}</div>`;
+  if(c.kind==='plat') return `<div class="alert"><b>${hm(c.t)}</b> · ${L(`Ve stanici ${c.site.name} bude ${c.n} vlaků, ale jen ${c.site.plat} ${kolej(c.site.plat)}. Vlak, pro který nebude volná kolej, počká ve stanici odjezdu.`,
+    `${c.site.name} will have ${c.n} trains but only ${c.site.plat} ${kolej(c.site.plat)}. The train without a free track will wait at its departure station.`,
+    `In ${c.site.name} stehen dann ${c.n} Züge, aber es gibt nur ${c.site.plat} ${kolej(c.site.plat)}. Der Zug ohne freies Gleis wartet im Abfahrtsbahnhof.`)}${moreTimes(c)}</div>`;
   const A=`${esc(c.a.tr.name)} (${legName(c.a)})`, B=`${esc(c.b.tr.name)} (${legName(c.b)})`;
   if(c.kind==='wait') return `<div class="alert"><b>${hm(c.t)}</b> · ${L(`${A} a ${B} se potkají na jedné koleji. Návěstidla je zastaví a jeden vlak počká.`,`${A} and ${B} meet on one track. Signals will stop them and one train will wait.`,`${A} und ${B} treffen sich auf einem Gleis. Signale halten sie an, ein Zug wartet.`)}${moreTimes(c)}</div>`;
   return `<div class="alert crash"><b>${hm(c.t)} · ${L('hrozí srážka','crash risk','Unfallgefahr')}</b><br>${L(`${A} a ${B} pojedou proti sobě po stejné koleji.`,`${A} and ${B} will run head-on along the same track.`,`${A} und ${B} fahren auf demselben Gleis aufeinander zu.`)}${moreTimes(c)}</div>`;
