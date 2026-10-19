@@ -1075,6 +1075,20 @@ const RIVERS = [
 ].map(r => r.map(p => P(p[0],p[1])));
 if(TUT){ RIVERS.splice(0,RIVERS.length,[[15.3,50.3],[15.36,49.95],[15.62,49.78],[16.05,49.52],[16.3,49.3]].map(p=>P(p[0],p[1]))); MOUNTAINS.splice(0,MOUNTAINS.length); }
 const riverSegs = []; RIVERS.forEach(r => { for(let i=0;i<r.length-1;i++) riverSegs.push([r[i],r[i+1]]); });
+// lakes, reservoirs and the big South Bohemian fish ponds: [lon, lat, half length, half width, turn in degrees, name]
+const LAKES = TUT ? [[15.75,49.95,60,34,15,'Rybník'],[15.12,49.45,46,30,-20,'Rybník']] : [
+  [14.09,48.82,150,40,-38,'Lipno'],[14.86,49.06,74,46,18,'Rožmberk'],[14.37,49.08,48,30,-10,'Bezdrev'],[14.66,50.585,56,40,8,'Máchovo jezero'],
+  [16.58,48.935,120,38,-12,'Nové Mlýny'],[15.2,49.67,110,26,28,'Želivka'],[13.33,50.37,92,30,-4,'Nechranice'],[16.1,49.135,80,20,-32,'Dalešice'],
+  [14.42,49.79,84,20,76,'Slapy'],[18.5,49.76,46,26,4,'Těrlicko'],[13.15,49.79,70,22,12,'Hracholusky'],[14.78,49.15,40,26,40,'Opatovický rybník']
+];
+const lakes = LAKES.map(([lon,lat,a,b,deg,name],i)=>{ const [cx,cy]=P(lon,lat), r=deg*Math.PI/180, pts=[], N=30;
+  for(let k=0;k<N;k++){ const t=k/N*Math.PI*2, w=1+0.13*Math.sin(3*t+i*1.7)+0.08*Math.sin(5*t+i*2.3)+0.05*Math.sin(9*t+i);   // a wobbly ellipse: a natural shore
+    const lx=Math.cos(t)*a*w, ly=Math.sin(t)*b*w; pts.push([cx+lx*Math.cos(r)-ly*Math.sin(r), cy+lx*Math.sin(r)+ly*Math.cos(r)]); }
+  return {x:cx,y:cy,a,b,name,pts}; });
+function inPts(x,y,pts){ let ins=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if(((yi>y)!==(yj>y)) && (x<(xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins; } return ins; }
+function inLake(x,y,m=0){ for(const L of lakes){ if(Math.abs(x-L.x)>L.a*1.3+m || Math.abs(y-L.y)>L.a*1.3+m) continue; if(inPts(x,y,L.pts)) return L;
+    if(m>0) for(let i=0;i<L.pts.length;i++){ const A=L.pts[i], B=L.pts[(i+1)%L.pts.length]; if(segDist(x,y,{x:A[0],y:A[1]},{x:B[0],y:B[1]})<m) return L; } }
+  return null; }
 // green hills keep clear of the rivers (and still of the stations)
 for(const m of MOUNTAINS){ if(!m.hill) continue; for(let it=0;it<30;it++){ let best=null, bd=Infinity; for(const [[x1,y1],[x2,y2]] of riverSegs){ const L2=(x2-x1)**2+(y2-y1)**2||1; const t=Math.max(0,Math.min(1,((m.x-x1)*(x2-x1)+(m.y-y1)*(y2-y1))/L2)); const px=x1+(x2-x1)*t, py=y1+(y2-y1)*t, d=Math.hypot(m.x-px,m.y-py); if(d<bd){ bd=d; best=[px,py]; } }
     if(!best || bd>=m.bound+14) break; const ux=(m.x-best[0])/(bd||1), uy=(m.y-best[1])/(bd||1), k=Math.min(40,m.bound+14-bd); m.x+=ux*k; m.y+=uy*k; mtPeaks(); }
@@ -1656,7 +1670,7 @@ function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unsh
   let cost=0, bad=0; const i0=A.kind==='station'?1:0, i1=P.length-(B.kind==='station'?2:1);
   for(let i=i0;i<i1;i++){ cost+=costPts(P[i],P[i+1]);
     // keep lines off the rivers: cross them, do not run along them
-    const L=Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y), n=Math.max(1,Math.round(L/8)); let wet=0; for(let k=0;k<n;k++){ const f=(k+0.5)/n; if(nearRiver(P[i].x+(P[i+1].x-P[i].x)*f, P[i].y+(P[i+1].y-P[i].y)*f, 10)) wet++; }
+    const L=Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y), n=Math.max(1,Math.round(L/8)); let wet=0; for(let k=0;k<n;k++){ const f=(k+0.5)/n; const qx=P[i].x+(P[i+1].x-P[i].x)*f, qy=P[i].y+(P[i+1].y-P[i].y)*f; if(nearRiver(qx,qy,10) || inLake(qx,qy,4)) wet++; }
     cost+=wet*(L/n)*RATE*4; }
   for(let i=1;i<P.length-1;i++){ if((A.kind==='station'&&i===1)||(B.kind==='station'&&i===P.length-2)) continue;   // the platform end itself is straight
     const u=unit(P[i-1].x,P[i-1].y,P[i].x,P[i].y), v=unit(P[i].x,P[i].y,P[i+1].x,P[i+1].y); const d=dot2(u,v); if(d<TURN_MIN+0.05){ bad++; continue; } const th=Math.acos(Math.max(-1,Math.min(1,d))); if(th<0.02) continue; const l=Math.min(Math.hypot(P[i].x-P[i-1].x,P[i].y-P[i-1].y),Math.hypot(P[i+1].x-P[i].x,P[i+1].y-P[i].y)), R=l/th; if(R<45) cost+=80*(45-R); }   // tight bends are allowed, just cost a little more
@@ -1752,7 +1766,7 @@ const M = { grass:new T.MeshLambertMaterial({map:grassTex}), dirt:mat('#c98d55')
   dark:mat('#3a4150'), white:mat('#ffffff'), yellow:mat('#ffc93c'), red:mat('#ff5a4f'), plaza:mat('#efe3c4'), roof:mat('#e8574b'), glass:new T.MeshLambertMaterial({color:'#bfe6ff'}),
   rock:flat('#9a9f7a'), rock2:flat('#7fa060'), snow:flat('#ffffff'), hill:flat('#77c454'), girder:mat('#4f8a6e'), brick:mat('#c96f52'), stone:mat('#b9b2a5'),
   concrete:mat('#d8d4cc'), metal:mat('#aeb8c4'), metalDark:mat('#6c7787'), copper:mat('#d9894a'), skoda:mat('#4ba82e'), tire:mat('#24272d') };
-const box=new T.BoxGeometry(1,1,1), cyl=new T.CylinderGeometry(1,1,1,16), cyl8=new T.CylinderGeometry(1,1,1,8), cone=new T.ConeGeometry(1,1,12), cone4=new T.ConeGeometry(1,1,4), sph=new T.SphereGeometry(1,14,10), peak=new T.ConeGeometry(1,1,7);
+const rockGeo=new T.IcosahedronGeometry(1,0), box=new T.BoxGeometry(1,1,1), cyl=new T.CylinderGeometry(1,1,1,16), cyl8=new T.CylinderGeometry(1,1,1,8), cone=new T.ConeGeometry(1,1,12), cone4=new T.ConeGeometry(1,1,4), sph=new T.SphereGeometry(1,14,10), peak=new T.ConeGeometry(1,1,7);
 const torus=new T.TorusGeometry(1,0.42,8,16);
 const prism=new T.CylinderGeometry(1,1,1,3); prism.rotateZ(Math.PI/2); prism.rotateX(-Math.PI/2);
 const bumpGeo=new T.LatheGeometry(Array.from({length:9},(_,i)=>{ const t=i/8; return new T.Vector2(Math.max(0.0001,t), 0.5+0.5*Math.cos(Math.PI*t)); }).reverse(),18);
@@ -1775,6 +1789,17 @@ function slab(sh,depth,material,y){ const g=new T.ExtrudeGeometry(sh,{depth,beve
 scene.add(slab(new T.Shape(BORDER.map(([x,y])=>new T.Vector2(x-CX,-(y-CZ)))),18,[M.grass,M.dirt],-18));
 { const bx=BORDER.map(([x,y])=>{ const dx=x-CX, dy=y-215*SC, l=Math.hypot(dx,dy); return new T.Vector2(x-CX+dx/l*14, -(y-CZ+dy/l*14)); }); scene.add(slab(new T.Shape(bx),6,[M.sand,M.sand],-24)); }
 for(const [[x1,y1],[x2,y2]] of riverSegs){ const l=Math.hypot(x2-x1,y2-y1); const o=mesh(box,M.river,(x1+x2)/2-CX,0.12,(y1+y2)/2-CZ,l,0.25,16,false); o.rotation.y=-Math.atan2(y2-y1,x2-x1); const g=new T.Group(); g.add(o); g.add(mesh(cyl,M.river,x2-CX,0.12,y2-CZ,8,0.25,8,false)); bake(g,STATIC_POOL); }
+
+const lakeTex=waterTex.clone(); lakeTex.needsUpdate=true; lakeTex.repeat.set(1/40,1/40);
+{   const water=new T.MeshLambertMaterial({map:lakeTex,color:'#d6f0ff'}), shore=mat('#e8d7a0'), reed=mat('#6f9a3c'), reed2=mat('#8bb04a');
+  const shape=(pts,grow)=>{ const cx=pts.reduce((a,p)=>a+p[0],0)/pts.length, cy=pts.reduce((a,p)=>a+p[1],0)/pts.length; return new T.Shape(pts.map(([x,y])=>{ const dx=x-cx, dy=y-cy, l=Math.hypot(dx,dy)||1; return new T.Vector2(x+dx/l*grow-CX, -(y+dy/l*grow-CZ)); })); };
+  let rs=11; const rr2=()=>{ rs=(rs*16807)%2147483647; return (rs-1)/2147483646; };
+  for(const L of lakes){ const g=new T.Group(); g.add(slab(shape(L.pts,7),0.3,shore,0.02)); g.add(slab(shape(L.pts,0),0.3,water,0.18));
+    for(let i=0;i<L.pts.length;i++){ if(rr2()<0.35) continue; const A=L.pts[i], B=L.pts[(i+1)%L.pts.length];   // reed beds along part of the shore
+      for(let k=0;k<3;k++){ const f=rr2(), x=A[0]+(B[0]-A[0])*f, y=A[1]+(B[1]-A[1])*f, h=2+rr2()*2.5; g.add(mesh(cone4,rr2()<0.5?reed:reed2,x-CX+(rr2()-.5)*3,h/2,y-CZ+(rr2()-.5)*3,0.8,h,0.8,false)); } }
+    if(L.a>=80) for(let k=0;k<2;k++){ const t=rr2()*Math.PI*2, bx=L.x+Math.cos(t)*L.a*0.35, by=L.y+Math.sin(t)*L.b*0.3; if(!inPts(bx,by,L.pts)) continue;   // a couple of sailing boats
+      const b=new T.Group(); b.position.set(bx-CX,0.5,by-CZ); b.rotation.y=rr2()*6; b.add(mesh(box,M.white,0,0.5,0,7,1,2.4)); b.add(mesh(cyl8,M.trunk,0.5,5,0,0.2,9,0.2)); b.add(mesh(cone4,M.white,1.8,5,0,2.2,7,0.2)); g.add(b); }
+    bake(g,STATIC_POOL); } }
 
 let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return (seed-1)/2147483646; };
 for(const m of MOUNTAINS){ const g=new T.Group(); g.position.set(m.x-CX,0,m.y-CZ); const low=m.hill;
@@ -1842,8 +1867,14 @@ for(let k=0;k<60000 && trees.length<7000;k++){ const x=30+rnd()*(700*SC-60), y=3
   const tx=base? base.x+(rnd()-.5)*34 : x, ty=base? base.y+(rnd()-.5)*34 : y;
   if(!inPoly(tx,ty)||!inPoly(tx+10,ty)||!inPoly(tx-10,ty)||!inPoly(tx,ty+10)||!inPoly(tx,ty-10)) continue;
   if(SITES.some(s=>{const n=nodes[s.node]; return Math.hypot(n.x-tx,n.y-ty)<(s.kind==='city'?78:66);})) continue;
-  if(rockH(tx,ty)>1 || nearRiver(tx,ty,8)) continue;
+  if(rockH(tx,ty)>1 || nearRiver(tx,ty,8) || inLake(tx,ty,9)) continue;
   trees.push({x:tx,y:ty,s:0.75+rnd()*0.6,v:rnd()<0.5}); }
+// national parks: thick, mostly spruce forest
+const PARKS = TUT ? [] : [[13.62,48.98,240,'Šumava'],[15.62,50.69,150,'Krkonoše'],[14.36,50.86,95,'České Švýcarsko'],[15.92,48.86,85,'Podyjí']].map(([lon,lat,r,name])=>{ const [x,y]=P(lon,lat); return {x,y,r,name}; });
+for(const pk of PARKS){ let n=0; for(let k=0;k<9000 && n<480;k++){ const a=rnd()*Math.PI*2, d=Math.sqrt(rnd())*pk.r, tx=pk.x+Math.cos(a)*d, ty=pk.y+Math.sin(a)*d;
+    if(!inPoly(tx,ty)||!inPoly(tx+10,ty)||!inPoly(tx-10,ty)||!inPoly(tx,ty+10)||!inPoly(tx,ty-10)) continue;
+    if(SITES.some(s=>{const q=nodes[s.node]; return Math.hypot(q.x-tx,q.y-ty)<(s.kind==='city'?78:66);}) || rockH(tx,ty)>1 || nearRiver(tx,ty,8) || inLake(tx,ty,9)) continue;
+    trees.push({x:tx,y:ty,s:0.8+rnd()*0.7,v:rnd()<0.8}); n++; } }
 const treeA=trees.filter(t=>t.v), treeB=trees.filter(t=>!t.v);
 const gTrunk=new T.CylinderGeometry(1,1,1,5), gCone=new T.ConeGeometry(1,1,7), gBall=new T.IcosahedronGeometry(1,0);
 const trunkIM=new T.InstancedMesh(gTrunk,M.trunk,trees.length), crownA=new T.InstancedMesh(gCone,M.leaf1,treeA.length), crownB=new T.InstancedMesh(gBall,M.leaf2,treeB.length);
@@ -1949,17 +1980,69 @@ if(!TUT){ const z=site('zatec'), mk=site('mikulov'), va=site('valtice');
   addField(mk,-70,45,40,30,'vine',0.35); addField(mk,60,-55,36,28,'vine',-0.2); addField(mk,-55,-70,30,22,'vine',0.1);
   addField(va,75,45,36,26,'vine',-0.3); addField(va,-70,-50,34,26,'vine',0.25); }
 
+/* ----- landmarks: one well-known building for every city ----- */
+const landmarks=[];
+function clearTrees(x,y,r){ for(const t of trees) if(Math.abs(t.x-x)<r && Math.abs(t.y-y)<r && Math.hypot(t.x-x,t.y-y)<r) t.noShow=true; }
+function landmarkSpot(n,prefer){ const tries=(prefer||[]).map(([dx,dy])=>[n.x+dx,n.y+dy]); for(let k=0;k<40;k++){ const a=k*2.4, r=70+(k%5)*14; tries.push([n.x+Math.cos(a)*r, n.y+Math.sin(a)*r]); }
+  for(const [x,y] of tries){ if(!inPoly(x,y) || inStation(x,y,26) || nearRiver(x,y,22) || inLake(x,y,24) || rockH(x,y)>0 || industryAt.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+26)) continue; return {x,y,a:Math.atan2(n.y-y,n.x-x)}; }
+  return null; }
+const LM={ cream:mat('#f3ead6'), stoneL:mat('#e6dccb'), dark:mat('#4a4440'), copper:mat('#5fa58a'), red:mat('#c9583f'), gold:mat('#e8b84a'), white:mat('#fbf8f2'), pink:mat('#f0b49c'), yellow:mat('#f2d48a'), rust:mat('#9a5a3a'), grey:mat('#8d8f94') };
+function nave(g,x,z,len,w,h,wall,roof){ g.add(mesh(box,wall,x,h/2,z,len,h,w)); g.add(mesh(prism,roof,x,h+w*0.3,z,len+0.5,w*0.6,w*0.75)); }
+const LANDMARK={
+  praha(g){ // Petřín lookout tower: an iron lattice on a green hill
+    g.add(mesh(sph,M.hill,0,-4,0,22,10,22)); const h=40;
+    for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]){ const leg=mesh(box,LM.rust,a*2.6,h/2+3,b*2.6,0.7,h,0.7); leg.rotation.set(b*0.08,0,-a*0.08); g.add(leg); }
+    for(let y=8;y<h;y+=7) g.add(mesh(box,LM.rust,0,y,0,7.5-y*0.1,0.5,7.5-y*0.1)); g.add(mesh(box,LM.rust,0,h+3,0,4,1.2,4)); g.add(mesh(cone4,LM.dark,0,h+6,0,2.2,5,2.2)); },
+  brno(g){ // Petrov cathedral with its two slender spires, Špilberk castle on the hill behind
+    nave(g,0,0,26,9,11,LM.cream,LM.dark); for(const sz of [-3,3]){ g.add(mesh(box,LM.cream,14,14,sz,4,28,4)); g.add(mesh(cone4,LM.dark,14,34,sz,2.6,12,2.6)); }
+    const sp=new T.Group(); sp.position.set(-26,0,14); sp.add(mesh(sph,M.hill,0,-3,0,22,9,22)); sp.add(mesh(box,LM.stoneL,0,7,0,24,6,14)); sp.add(mesh(box,LM.stoneL,9,10,0,6,12,6)); sp.add(mesh(box,LM.red,0,10.6,0,24.5,1.4,14.5)); g.add(sp); },
+  ostrava(g){ // Dolní Vítkovice: blast furnace, hot-blast stoves and the gas holder
+    g.add(mesh(cyl,LM.rust,0,15,0,5,30,5)); g.add(mesh(cone,LM.rust,0,33,0,3.6,6,3.6)); g.add(mesh(box,LM.dark,0,20,7,3,40,3)); for(const z of [-12,-6]){ g.add(mesh(cyl,LM.grey,10,12,z,3,24,3)); g.add(mesh(sph,LM.grey,10,24,z,3,2,3)); }
+    pipe(g,0,30,0,10,22,-9,1,LM.dark); g.add(mesh(cyl,LM.grey,-16,10,6,9,20,9)); g.add(mesh(cyl,LM.dark,-16,20.5,6,9.2,1,9.2)); },
+  plzen(g){ // St Bartholomew's on the square, the tallest church tower in the land
+    nave(g,0,0,28,11,13,LM.stoneL,LM.dark); g.add(mesh(box,LM.stoneL,-17,22,0,7,44,7)); g.add(mesh(box,LM.cream,-17,45,0,8,2,8)); g.add(mesh(cone4,LM.copper,-17,53,0,4.4,14,4.4));
+    for(let i=0;i<4;i++) g.add(mesh(box,LM.stoneL,-8+i*6,6,6.2,1.2,12,1.6)); },
+  cb(g){ // the Black Tower and the arcaded square with Samson's fountain
+    g.add(mesh(box,LM.dark,0,17,0,7,34,7)); g.add(mesh(box,LM.white,0,35,0,8.4,1.4,8.4)); g.add(mesh(cone4,LM.copper,0,41,0,4.4,10,4.4)); g.add(mesh(sph,LM.gold,0,46.5,0,0.8,0.8,0.8));
+    g.add(mesh(box,M.stone,16,0.2,0,26,0.4,26,false)); g.add(mesh(cyl,LM.stoneL,16,1.2,0,4,2,4)); g.add(mesh(cyl,LM.cream,16,4.2,0,0.8,5,0.8)); g.add(mesh(sph,LM.white,16,7.4,0,1.4,1.6,1.4)); },
+  krumlov(g){ // the castle and its painted round tower
+    g.add(mesh(sph,M.hill,0,-3,0,26,9,20)); g.add(mesh(box,LM.cream,-6,8,0,30,10,9)); g.add(mesh(prism,LM.red,-6,15,0,30.5,4,6.5)); g.add(mesh(box,LM.cream,-18,7,8,8,8,12));
+    g.add(mesh(cyl,LM.pink,12,14,0,3.4,28,3.4)); g.add(mesh(cyl,LM.white,12,29,0,4,2,4)); g.add(mesh(cyl,LM.pink,12,32,0,2.8,4.5,2.8)); g.add(mesh(sph,LM.copper,12,35.5,0,2.8,2.6,2.8)); g.add(mesh(cone,LM.gold,12,38.5,0,0.5,3,0.5)); },
+  valtice(g){ // the baroque chateau: wings round a court, a dome over the middle
+    g.add(mesh(box,LM.yellow,0,6,0,36,12,9)); g.add(mesh(prism,LM.red,0,14,0,36.5,4,6.5)); for(const x of [-16,16]){ g.add(mesh(box,LM.yellow,x,6,12,7,12,18)); g.add(mesh(prism,LM.red,x,14,12,7.5,4,13)); }
+    g.add(mesh(cyl8,LM.yellow,0,15,-1,5,6,5)); g.add(mesh(sph,LM.copper,0,19,-1,5,4,5)); g.add(mesh(cone,LM.gold,0,24,-1,0.5,3,0.5)); },
+  kv(g){ // the Mill Colonnade with the hot spring jet beside it
+    g.add(mesh(box,M.stone,0,0.3,0,40,0.6,12,false)); for(let i=0;i<10;i++) for(const z of [-4.5,4.5]) g.add(mesh(cyl8,LM.white,-18+i*4,4,z,0.8,8,0.8));
+    g.add(mesh(box,LM.white,0,8.6,0,41,1.4,12)); g.add(mesh(prism,LM.cream,0,10.6,0,40,3,8)); g.add(mesh(cyl,mat('#3ab7f0'),26,0.4,0,6,0.8,6,false)); g.add(mesh(cyl,mat('#bfeeff'),26,6,0,0.9,12,0.9,false)); g.add(mesh(sph,mat('#e8faff'),26,12,0,2.2,1.6,2.2,false)); },
+  kh(g){ // St Barbara's cathedral with its three tent roofs and flying buttresses
+    nave(g,0,0,30,12,14,LM.stoneL,LM.dark); for(const x of [-8,0,8]) g.add(mesh(cone,LM.dark,x,24,0,5.4,10,5.4));
+    for(let i=0;i<5;i++) for(const z of [-1,1]){ const b=mesh(box,LM.stoneL,-12+i*6,8,z*8,1,12,1); b.rotation.x=z*0.4; g.add(b); } },
+  telc(g){ // the square of gabled houses in every colour, and the chateau
+    const C=['#f4c28a','#a9d5c8','#f7e3a4','#e8a8a0','#c9d7f0','#f3ead6','#b8dca0'];
+    for(let i=0;i<7;i++){ const x=-18+i*6, c=mat(C[i]); g.add(mesh(box,c,x,5,0,5.6,10,8)); const gb=mesh(cone4,c,x,12,-3.6,3.2,4.4,0.6); gb.rotation.y=Math.PI/4; g.add(gb); g.add(mesh(prism,LM.red,x,11,1,5.8,3,5)); g.add(mesh(box,LM.white,x,1.6,-4.1,4.6,3.2,0.4)); }
+    g.add(mesh(box,M.stone,0,0.2,-12,44,0.4,14,false)); g.add(mesh(box,LM.cream,26,7,6,12,14,16)); g.add(mesh(prism,LM.red,26,15.5,6,12.5,4,11)); }
+};
+// Charles Bridge across the Vltava: stone arches, a gothic tower at each end
+function charlesBridge(n){ let best=null, bd=1e9; for(const [[x1,y1],[x2,y2]] of riverSegs){ for(let f=0;f<=1;f+=0.05){ const x=x1+(x2-x1)*f, y=y1+(y2-y1)*f, d=Math.hypot(x-n.x,y-n.y); if(d<90 || d>220 || inStation(x,y,40)) continue; if(Math.abs(d-140)<bd){ bd=Math.abs(d-140); best={x,y,a:Math.atan2(y2-y1,x2-x1)}; } } }
+  if(!best) return; const g=new T.Group(); g.position.set(best.x-CX,0,best.y-CZ); g.rotation.y=-best.a-Math.PI/2; const len=34;
+  g.add(mesh(box,LM.stoneL,0,4.2,0,len,1.6,6)); for(const x of [-12,-4,4,12]){ g.add(mesh(box,LM.stoneL,x,1.6,0,2.4,3.4,6.6)); }
+  for(let i=0;i<8;i++) for(const z of [-2.8,2.8]) g.add(mesh(box,LM.dark,-14+i*4,6,z,0.6,2.4,0.6,false));
+  for(const x of [-len/2-3,len/2+3]){ g.add(mesh(box,LM.dark,x,8,0,6,16,7)); g.add(mesh(cone4,LM.dark,x,20,0,4,8,4)); }
+  clearTrees(best.x,best.y,26); addDecor(g,best.x,best.y,24); }
+
 /* ----- cities ----- */
 for(const s of SITES){ if(s.kind!=='city') continue; const n=nodes[s.node]; let placed=0;
   const big = s.id==='praha';
+  if(LANDMARK[s.id]){ const spot=landmarkSpot(n,s.id==='praha'?[[-150,40],[-140,-20]]:null); if(spot){ const g=new T.Group(); g.position.set(spot.x-CX,0,spot.y-CZ); g.rotation.y=spot.a; LANDMARK[s.id](g); clearTrees(spot.x,spot.y,30); addDecor(g,spot.x,spot.y,28); landmarks.push([s.id,spot.x,spot.y]); industryAt.push([spot.x,spot.y,22]); } }
   for(let k=0;k<500 && placed<s.size;k++){ const a=rnd()*Math.PI*2, r=40+rnd()*(big?64:46); const x=n.x+Math.cos(a)*r, y=n.y+Math.sin(a)*r;
     const v=VARIANTS[Math.floor(rnd()*VARIANTS.length)], tall=v.tall && rnd()<0.8;
-    if(!inPoly(x,y) || inStation(x,y,12,tall?44:16) || industryAt.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+10)) continue;
+    if(!inPoly(x,y) || inStation(x,y,12,tall?44:16) || inLake(x,y,8) || industryAt.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+10)) continue;
     const w=7+rnd()*6, d=7+rnd()*6, h= tall ? (big?26:20)+rnd()*(big?22:14) : 8+rnd()*12;
     const roof = tall ? (rnd()<0.35?'spire':'flat') : (rnd()<0.6?'pitch':'flat');
     const g=building(x-CX,y-CZ,w,d,h,v,roof); g.rotation.y=Math.round(rnd()*4)*Math.PI/2;
     addDecor(g,x,y,Math.max(w,d)*0.7); placed++; }
-  if(s.tourist){ let hx=n.x+62, hy=n.y-78; if(inStation(hx,hy,24)) hx=n.x-62; const g=new T.Group(); g.position.set(hx-CX,0,hy-CZ);
+  if(s.id==='praha') charlesBridge(n);
+  if(s.tourist && !LANDMARK[s.id]){ let hx=n.x+62, hy=n.y-78; if(inStation(hx,hy,24)) hx=n.x-62; const g=new T.Group(); g.position.set(hx-CX,0,hy-CZ);
     g.add(mesh(box,mat('#f3ead6'),0,6,0,30,12,12)); g.add(mesh(box,mat('#c9583f'),0,13.5,0,31,3,13));
     for(const [tx2,h2] of [[-15,20],[15,16]]){ g.add(mesh(cyl,mat('#f7e9c4'),tx2,h2/2,0,4.5,h2,4.5)); g.add(mesh(cone,mat('#d6553c'),tx2,h2+4,0,5.6,8,5.6)); }
     const t=gothicTower(4,6,24,'#3c7a5a'); g.add(t); addDecor(g,hx,hy,26); }
@@ -1970,12 +2053,30 @@ for(const s of SITES){ if(s.kind!=='city') continue; const n=nodes[s.node]; let 
     for(const [ox,oy] of [[60,-70],[-70,40],[30,70]]){ const t=gothicTower(n.x+ox-CX,n.y+oy-CZ,18+rnd()*8,'#4a3f3a'); addDecor(t,n.x+ox,n.y+oy,6); } }
 }
 
+/* ----- national parks: a sign, rock towns and the sandstone arch ----- */
+const parkLabels=[];
+const M_SAND=mat('#dcb97c'), M_SAND2=mat('#c9a265');
+function sandTower(g,x,z,h,r){ g.add(mesh(cyl8,rnd()<0.5?M_SAND:M_SAND2,x,h/2,z,r,h,r*0.9)); g.add(mesh(sph,rnd()<0.5?M_SAND:M_SAND2,x,h,z,r*1.05,r*0.7,r)); if(rnd()<0.6) g.add(mesh(cone,M.leaf1,x,h+r*0.6+2,z,1.6,4,1.6)); }
+function rockTown(lon,lat,n,spread){ const [x,y]=P(lon,lat); const g=new T.Group(); g.position.set(x-CX,0,y-CZ);
+  for(let i=0;i<n;i++){ const a=rnd()*Math.PI*2, d=rnd()*spread; sandTower(g,Math.cos(a)*d,Math.sin(a)*d,10+rnd()*16,2.2+rnd()*2.2); }
+  clearTrees(x,y,spread+8); addDecor(g,x,y,spread+6); }
+if(!TUT){ rockTown(15.3,50.47,16,26); rockTown(16.12,50.61,18,30); rockTown(14.33,50.84,12,24);   // Prachovské skály, Adršpach, Labské pískovce
+  { const [x,y]=P(14.3,50.875), g=new T.Group(); g.position.set(x-CX,0,y-CZ);   // Pravčická brána: a natural sandstone arch on a rock base
+    g.add(mesh(rockGeo,M_SAND2,0,4,0,26,9,15)); for(const sx of [-11,11]) g.add(mesh(cyl8,M_SAND,sx,10,0,4.2,14,4.8));
+    const arch=mesh(new T.TorusGeometry(1,0.3,7,14,Math.PI),M_SAND,0,15,0,12,11,9); g.add(arch); g.add(mesh(box,M_SAND2,0,26.5,0,8,2.4,6));
+    for(const sx of [-19,19]) sandTower(g,sx,6,16+rnd()*6,3); g.add(mesh(cone,M.leaf1,-4,29.5,0,1.8,4,1.8)); clearTrees(x,y,26); addDecor(g,x,y,24); }
+  for(const pk of PARKS){ const c=document.createElement('canvas'); c.width=512; c.height=96; const g2=c.getContext('2d');
+    g2.font="800 40px 'Baloo 2', 'Trebuchet MS', sans-serif"; const t=L('NP ','NP ','NP ')+pk.name, w=Math.min(500,g2.measureText(t).width+60), x0=(512-w)/2;
+    g2.fillStyle='rgba(20,60,30,0.25)'; rr(g2,x0,10,w,80,26); g2.fill(); g2.fillStyle='#2f7a3e'; rr(g2,x0,4,w,80,26); g2.fill();
+    g2.fillStyle='#ffffff'; g2.textAlign='center'; g2.textBaseline='middle'; g2.fillText(t,256,46);
+    const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),depthWrite:false,transparent:true})); sp.position.set(pk.x-CX,34,pk.y-CZ); sp.renderOrder=2; scene.add(sp); parkLabels.push(sp); } }
+
 /* ----- open country: a patchwork of fields ----- */
 { const furrow=canvasTex(64,64,(g,w,h)=>{ g.fillStyle='#ffffff'; g.fillRect(0,0,w,h); g.fillStyle='rgba(0,0,0,0.13)'; for(let x=0;x<w;x+=8) g.fillRect(x,0,3,h); });
   const FC=['#e9d36a','#f4e04d','#a8cf5c','#9c7a52','#cdbb7c','#86bd4e','#d9c25a'], F=[];
   for(let k=0;k<5000 && F.length<(TUT?40:300);k++){ const x=30+rnd()*(700*SC-60), y=30+rnd()*(415*SC-60), w=50+rnd()*70, d=34+rnd()*40, a=rnd()*Math.PI, c=Math.floor(rnd()*FC.length);
     if(!inPoly(x,y)||!inPoly(x+w/2,y)||!inPoly(x-w/2,y)||!inPoly(x,y+d/2)||!inPoly(x,y-d/2)) continue;
-    if(SITES.some(s=>{ const n=nodes[s.node]; return Math.hypot(n.x-x,n.y-y)<150; }) || nearRiver(x,y,Math.max(w,d)/2+10)) continue;
+    if(SITES.some(s=>{ const n=nodes[s.node]; return Math.hypot(n.x-x,n.y-y)<150; }) || nearRiver(x,y,Math.max(w,d)/2+10) || inLake(x,y,Math.max(w,d)/2+12)) continue;
     if(rockH(x,y)>0 || hillH(x,y)>0 || MOUNTAINS.some(m=>Math.hypot(m.x-x,m.y-y)<m.bound+Math.max(w,d)/2)) continue;
     if(industryAt.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+Math.max(w,d)/2) || F.some(f=>Math.hypot(f.x-x,f.y-y)<(f.r+Math.max(w,d)/2)*0.8)) continue;
     const ca=Math.cos(a), sa=Math.sin(a), inside=[]; for(const t of trees){ const dx=t.x-x, dy=t.y-y; if(Math.abs(dx)>w||Math.abs(dy)>w) continue; const u=dx*ca+dy*sa, v=-dx*sa+dy*ca; if(Math.abs(u)<w/2+3 && Math.abs(v)<d/2+3) inside.push(t); }
@@ -2121,7 +2222,7 @@ function addViaduct(x,y,ang,len,pier,k){ const g=new T.Group(); g.position.set(x
   if(pier && !crossTrackNear(x,y,7.5,ownKeys(k))) g.add(mesh(box,M.stone,0,-1.5,0,2.2,3.6,10.5));
   bridgeGroup.add(g); }
 const TUN_DARK=new T.MeshBasicMaterial({color:'#11151c'});
-const rockGeo=new T.IcosahedronGeometry(1,0), M_PORTAL=mat('#cfc6b4'), M_VOUSS=mat('#e2dccd');
+const M_PORTAL=mat('#cfc6b4'), M_VOUSS=mat('#e2dccd');
 // a stone tunnel mouth set into the rock: arched facade with a lighter ring, wing walls along the cutting, rock piled round it
 function addPortal(x,y,ang){ const g=new T.Group(); g.position.set(x-CX,0,y-CZ); g.rotation.y=-ang;
   g.add(mesh(box,TUN_DARK,9,5.6,0,16,11.2,10.6,false));                                        // the dark bore going into the hill
@@ -2166,8 +2267,8 @@ function rebuildTracks(){
         const [ux,uy]=unit(A.x,A.y,B.x,B.y), [rx,ry]=unit(p[0],p[1],q[0],q[1]), sn=Math.abs(ux*ry-uy*rx); done.push({x,y,truss:sn>=0.5});
         if(sn>=0.5) addBridge(A,B,t,Math.min(60,16/sn+8),sg.k); }
       // running along the water: a low girder viaduct instead of a row of truss bridges
-      const L=Math.hypot(B.x-A.x,B.y-A.y); if(!nearRiver((A.x+B.x)/2,(A.y+B.y)/2,9+L/2)) continue; const n=Math.max(1,Math.round(L/6)), ang=Math.atan2(B.y-A.y,B.x-A.x);
-      for(let k=0;k<n;k++){ const f=(k+0.5)/n, x=A.x+(B.x-A.x)*f, y=A.y+(B.y-A.y)*f; if(!nearRiver(x,y,9) || done.some(d=>Math.hypot(d.x-x,d.y-y)<14 && d.truss)) continue; addViaduct(x,y,ang,L/n,k%3===1,sg.k); } } }
+      const L=Math.hypot(B.x-A.x,B.y-A.y), wetLake=!!inLake((A.x+B.x)/2,(A.y+B.y)/2,6+L/2); if(!wetLake && !nearRiver((A.x+B.x)/2,(A.y+B.y)/2,9+L/2)) continue; const n=Math.max(1,Math.round(L/6)), ang=Math.atan2(B.y-A.y,B.x-A.x);
+      for(let k=0;k<n;k++){ const f=(k+0.5)/n, x=A.x+(B.x-A.x)*f, y=A.y+(B.y-A.y)*f; if((!nearRiver(x,y,9) && !inLake(x,y,3)) || done.some(d=>Math.hypot(d.x-x,d.y-y)<14 && d.truss)) continue; addViaduct(x,y,ang,L/n,k%3===1,sg.k); } } }
   // tunnel portals exactly where the line enters the rock
   if(MOUNTAINS.length) for(const sg of segs){ if(!nearTerrain(sg.x1,sg.y1,sg.x2,sg.y2)) continue; const L=Math.hypot(sg.x2-sg.x1,sg.y2-sg.y1), n=Math.max(2,Math.ceil(L/3)), ang=Math.atan2(sg.y2-sg.y1,sg.x2-sg.x1); let was=rockH(sg.x1,sg.y1)>TUN;
     for(let i=1;i<=n;i++){ const x=sg.x1+(sg.x2-sg.x1)*i/n, y=sg.y1+(sg.y2-sg.y1)*i/n, now=rockH(x,y)>TUN; if(now!==was){ addPortal(x,y, now?ang:ang+Math.PI); was=now; } } }
@@ -3114,7 +3215,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
   else if(menuView==='rules'){ h=`${backBtn()}<h2>${L('Pravidla','Rules','Regeln')}</h2>
       <p>${L(`Propoj Česko železnicí a vozi městům, co potřebují. Začínáš s ${fmtK(START_MONEY)}.`,`Connect Czechia by rail and bring cities what they need. You start with ${fmtK(START_MONEY)}.`,`Verbinde Tschechien per Bahn und bring den Städten, was sie brauchen. Du startest mit ${fmtK(START_MONEY)}.`)}</p>
       <ol>${introItems().map(x=>`<li>${x}</li>`).join('')}
-      <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
+      <li>${L('Každý konec stanice má zhlaví s výhybkami: vlak z trati vjede na kteroukoli volnou kolej. Výhybku mimo stanici postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','Every station end has a throat with switches: a train from the line can take any free platform track. Build a switch out on the line by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Jedes Bahnhofsende hat ein Weichenvorfeld: Ein Zug von der Strecke kann jedes freie Bahnsteiggleis nehmen. Eine Weiche auf der Strecke baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
       <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerKm} mincí za každý ujetý km (100 km = 500 mincí).`,`A wagon earns by cargo and distance. Running costs ${COST.runPerKm} coins per kilometre (100 km = 500 coins).`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer (100 km = 500 Münzen).`)}</p>`; }
   else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn('settings')}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
@@ -3307,8 +3408,8 @@ function frameBody(now){
   planeTick(real);
   for(const [id,o] of signalMeshes){ const red=trains.some(t=>t.st==='hold'&&t.path&&t.path[t.pi]===id) || (entrySig.has(id) && [...(adj.get(id)||[])].some(x=>{ const po=portOf.get(x); return po && trainsAt(po.s.node).some(t=>t.plat===po.k); })) || [...(adj.get(id)||[])].some(x=>occ.has(ekey(id,x))); o.l1.material=red?LIGHT_OFF:LIGHT_G; o.l2.material=red?LIGHT_R:LIGHT_OFF; }
   if(tool==='track' && anchor!=null){ const nd=anchorPos(); ring.visible=true; ring.position.set(nd.x-CX,3,nd.y-CZ); const s=1+Math.sin(now/180)*0.12; ring.scale.set(s,s,s); } else ring.visible=false;
-  const k=Math.max(0.35,camD/620); for(const sp of labelOf.values()) sp.scale.set(112*k,32.8*k,1);
-  updateSmoke(real); waterTex.offset.x+=real*0.004; waterTex.offset.y+=real*0.002;
+  const k=Math.max(0.35,camD/620); for(const sp of labelOf.values()) sp.scale.set(112*k,32.8*k,1); for(const sp of parkLabels) sp.scale.set(84*k,15.8*k,1);
+  updateSmoke(real); waterTex.offset.x+=real*0.004; waterTex.offset.y+=real*0.002; lakeTex.offset.x+=real*0.0002;
   for(let i=effects.length-1;i>=0;i--){ const f=effects[i]; f.t+=real; const s=3+f.t*24; f.ball.scale.set(s,s,s); f.ball.material.opacity=Math.max(0,1-f.t/0.6); if(f.t>0.7){ scene.remove(f.g); effects.splice(i,1); } }
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.t+=real; v3.set(f.x-CX,20,f.y-CZ).project(camera);
     const tt=Math.max(0,f.t); const x=(v3.x+1)/2*W, y=(1-v3.y)/2*H-tt*40; f.el.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%)`; f.el.style.opacity=f.t<0?'0':String(Math.max(0,1-tt/1.4));
