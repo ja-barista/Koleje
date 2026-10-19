@@ -1351,7 +1351,7 @@ function depart(tr){
   tr.delay=Math.max(0,Math.round(gameMin-tr.plannedDep));
   tr.nextIdx=next; tr.path=path; tr.pi=0; tr.t=0; tr.at=null; tr.legStart=gameMin; tr.legKm=pathLen(path)*KM_PER_UNIT;
   const A=NP(path,0), B=NP(path,1), [ux,uy]=unit(A.x,A.y,B.x,B.y);
-  tr.trail=[]; for(let d=0; d<=130; d+=2) tr.trail.push({x:A.x-ux*d, y:A.y-uy*d});
+  if(!(tr.trail.length>1 && Math.hypot(tr.trail[0].x-A.x,tr.trail[0].y-A.y)<3)){ tr.trail=[]; for(let d=0; d<=130; d+=2) tr.trail.push({x:A.x-ux*d, y:A.y-uy*d}); }   // carrying straight on: the wagons stay where they stood
   tr.ang=Math.atan2(uy,ux);
   tr._sq=false; { const m=tr.parts&&tr.parts[0]; if(m) sndHorn(m.position.x+CX,m.position.z+CZ,Math.random()<0.5); }
   { const own=new Set(); for(let i=0;i<path.length-1;i++) own.add(ekey(path[i],path[i+1])); tr.relq=(tr.relq||[]).filter(x=>{ if(own.has(x.k)){ if(occ.get(x.k)===tr.id) occ.delete(x.k); return false; } return true; }); }
@@ -1471,7 +1471,7 @@ function arrive(tr){
   releaseTail(tr);   // wagons that still stick out of the platform keep their track blocked
   const node=tr.path[tr.path.length-1], s=nodeSite.get(node);
   let idx=tr.nextIdx; if(tr.route[idx]!==s.id) idx=tr.route.indexOf(s.id);
-  const via=portOf.get(tr.path[tr.path.length-2]); tr.face = via ? -via.dir : 1; tr.path=null; tr.at=node; tr.plat = via && via.k!=null ? via.k : freePlat(node,tr); tr.st='dwell'; tr.trail=[]; tr.stopIdx=idx; tr.why=''; tr._floatN=0;
+  const via=portOf.get(tr.path[tr.path.length-2]); tr.face = via ? -via.dir : 1; tr.path=null; tr.at=node; tr.plat = via && via.k!=null ? via.k : freePlat(node,tr); tr.st='dwell'; tr.stopIdx=idx; tr.why=''; tr._floatN=0;
   if(tr.legStart!=null){ const run=Math.round((tr.legKm||0)*COST.runPerKm); tr.legStart=null; if(run>0){ setMoney(money-run); runCosts+=run; logIncome(-run); tr.ran=(tr.ran||0)+run; const nd=nodes[node]; floatText(nd.x,nd.y,'−'+num(run)+' '+COIN()+' '+L('za jízdu','running','Fahrt'),true); } }
   let tu=0; tr.unl=[];
   if(idx>=0){ const by={}; tr.loads.forEach((l,i)=>{ if(l && accepts(s,l.c)) (by[l.c]=by[l.c]||[]).push(i); });
@@ -1609,8 +1609,10 @@ function pickTarget(w){
     const k = (s.plat>1 && Math.abs(ly)<half+9) ? Math.max(0,Math.min(s.plat-1,Math.round((ly+half)/PLAT_GAP))) : null;
     const d = Math.abs(lx)>s.plen/2-18 ? (lx>0?1:0) : null;   // tapped near one end: build from that end (in front of the end = switches to all tracks)
     return {kind:'station',s,k,d}; }
-  const r=Math.max(14,22*worldPerPx());
-  const n=nearestNode(w.x,w.y,r,isTrackNode); if(n>=0) return {kind:'node',id:n};
+  const r=Math.max(16,26*worldPerPx());
+  // a loose track end pulls hard: carrying a line on end to end always wins over branching off the side of a track
+  const e=nearestNode(w.x,w.y,Math.max(44,64*worldPerPx()),id=>isTrackNode(id) && deg(id)===1); if(e>=0) return {kind:'node',id:e};
+  const n=nearestNode(w.x,w.y,r*1.25,isTrackNode); if(n>=0) return {kind:'node',id:n};
   const ep=nearestEdgePoint(w.x,w.y,r); if(ep) return {kind:'edge',...ep};
   return {kind:'free',x:w.x,y:w.y};
 }
@@ -1667,7 +1669,7 @@ function planScore(A,B,pl){ const P=pl.map(ptPos); if(A.kind==='station') P.unsh
 function planBuild(A,B,quick){
   const so = A.kind==='station' ? (A.d!=null?[A.d]:[0,1]) : [null], eo = B.kind==='station' ? (B.d!=null?[B.d]:[0,1]) : [null];
   let best=null, bs=Infinity;
-  for(const a of so) for(const b of eo) for(const kf of (quick?[0.3,0.65,1.25]:[0.15,0.3,0.45,0.65,0.9,1.25])){ const pl=planBuildWith(A,B,a,b,kf,0), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
+  for(const a of so) for(const b of eo) for(const kf of (quick?[0.15,0.4,0.9]:[0.07,0.15,0.3,0.45,0.65,0.9,1.25])){ const pl=planBuildWith(A,B,a,b,kf,0), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   if(bs>=1e7) for(const a of so) for(const b of eo) for(const kf of (quick?[0.6]:[0.45,0.8])) for(const bend of (quick?[-0.4,0.4]:[-0.6,-0.4,-0.25,0.25,0.4,0.6])){ const pl=planBuildWith(A,B,a,b,kf,bend), sc=planScore(A,B,pl); if(sc<bs){ bs=sc; best=pl; } }
   return best;
 }
@@ -2018,15 +2020,16 @@ function trackSegments(){
     const ca=cornerAtEnd(e.a,e.b)?cornerR(e.a):0, cb=cornerAtEnd(e.b,e.a)?cornerR(e.b):0;
     let pieces=[[ca,e.len-cb]];
     for(const f of flyovers) for(const cut of f.cuts){ if(cut.k!==ekey(e.a,e.b)) continue; const c0=cut.from===e.a?cut.d0:e.len-cut.d1, c1=cut.from===e.a?cut.d1:e.len-cut.d0, out=[]; for(const [p0,p1] of pieces){ if(c1<=p0||c0>=p1){ out.push([p0,p1]); continue; } if(c0>p0) out.push([p0,c0]); if(c1<p1) out.push([c1,p1]); } pieces=out; }
-    for(const [p0,p1] of pieces) if(p1-p0>0.5) segs.push({x1:A.x+ux*p0,y1:A.y+uy*p0,x2:A.x+ux*p1,y2:A.y+uy*p1}); }
+    const k=ekey(e.a,e.b); for(const [p0,p1] of pieces) if(p1-p0>0.5) segs.push({x1:A.x+ux*p0,y1:A.y+uy*p0,x2:A.x+ux*p1,y2:A.y+uy*p1,k}); }
   const flyNodes=new Set(); flyovers.forEach(f=>f.nodes.forEach(n=>flyNodes.add(n)));
   for(const [n,set] of adj){ if(set.size!==2 || flyNodes.has(n)) continue; const [a,b]=[...set]; if(!isCorner(n,a,b)) continue; const N=nodes[n], R=cornerR(n);
     const [ax,ay]=unit(N.x,N.y,nodes[a].x,nodes[a].y), [bx,by]=unit(N.x,N.y,nodes[b].x,nodes[b].y);
     const p0={x:N.x+ax*R,y:N.y+ay*R}, p2={x:N.x+bx*R,y:N.y+by*R}, steps=Math.max(4,Math.round(R/5)); let prev=p0;
-    for(let k=1;k<=steps;k++){ const q=bez(p0,N,p2,k/steps); segs.push({x1:prev.x,y1:prev.y,x2:q.x,y2:q.y}); prev=q; } }
+    const ek=ekey(n,a); for(let k=1;k<=steps;k++){ const q=bez(p0,N,p2,k/steps); segs.push({x1:prev.x,y1:prev.y,x2:q.x,y2:q.y,k:ek}); prev=q; } }
   for(const st of SITES) for(const L of st.side){ const used=L.filter(portUsed); if(!used.length || L.length<2) continue;
     for(const k of L){ const P=nodes[k], po=portOf.get(k), [ex,ey]=toW(st,po.dir*(st.plen/2-2),po.k*PLAT_GAP-(st.plat-1)/2*PLAT_GAP); segs.push({x1:ex,y1:ey,x2:P.x,y2:P.y,thr:1}); }
-    for(const u of used){ const F=fanPt(u); for(const k of L){ if(k===u) continue; const P=nodes[k]; segs.push({x1:F.x,y1:F.y,x2:P.x,y2:P.y,thr:1}); } } }
+    const ku=new Set(used.map(u=>portOf.get(u).k));   // draw each line's switches up to the next line's track: beyond it the two share the same ladder
+    for(const u of used){ const F=fanPt(u), a=portOf.get(u).k; for(const k of L){ const b=portOf.get(k).k; if(k===u) continue; let hidden=false; for(let c=Math.min(a,b)+1;c<Math.max(a,b);c++) if(ku.has(c)) hidden=true; if(hidden) continue; const P=nodes[k]; segs.push({x1:F.x,y1:F.y,x2:P.x,y2:P.y,thr:1}); } } }
   return segs;
 }
 const MAXS=20000;
@@ -2034,15 +2037,17 @@ const MASTS=8000, mastIM=new T.InstancedMesh(box,mat('#7d8790'),MASTS), armIM=ne
 [mastIM,armIM,wireIM].forEach(m=>{ m.count=0; m.frustumCulled=false; scene.add(m); }); mastIM.castShadow=true;
 function buildCatenary(segs){ let mi=0, wi=0, carry=0;
   for(const s of segs){ const dx=s.x2-s.x1, dy=s.y2-s.y1, L=Math.hypot(dx,dy); if(L<0.5) continue; const ang=-Math.atan2(dy,dx), px=-dy/L, py=dx/L;
-    const h1=s.h1||0, h2=s.h2||0, z1=10+flyH(s.x1,s.y1,-ang)+h1, z2=10+flyH(s.x2,s.y2,-ang)+h2;
+    const h1=s.h1||0, h2=s.h2||0, z1=10+flyH(s.x1,s.y1,-ang,s.k)+h1, z2=10+flyH(s.x2,s.y2,-ang,s.k)+h2;
     if(wi<MAXS){ const len=Math.hypot(L,z2-z1); tmpP.set((s.x1+s.x2)/2-CX,(z1+z2)/2,(s.y1+s.y2)/2-CZ); tmpQ.setFromEuler(new T.Euler(0,ang,Math.atan2(z2-z1,L),'YZX')); tmpS.set(len,0.18,0.18); tmpM.compose(tmpP,tmpQ,tmpS); wireIM.setMatrixAt(wi++,tmpM); }
-    for(let d=carry; d<L && mi<MASTS; d+=48){ const x=s.x1+dx*d/L, y=s.y1+dy*d/L, h=flyH(x,y,-ang)+h1+(h2-h1)*d/L; if(trackNear(x+px*6,y+py*6,3.5)) continue;
+    for(let d=carry; d<L && mi<MASTS; d+=48){ const x=s.x1+dx*d/L, y=s.y1+dy*d/L, h=flyH(x,y,-ang,s.k)+h1+(h2-h1)*d/L; if(trackNear(x+px*6,y+py*6,3.5)) continue;
       setInst(mastIM,mi,x+px*6.2-CX,(11+h)/2,y+py*6.2-CZ,0.7,11+h,0.7,ang); setInst(armIM,mi,x+px*3.1-CX,10.8+h,y+py*3.1-CZ,0.4,0.4,6.4,ang); mi++; }
     carry=Math.max(0,48-((L-carry)%48)); }
   mastIM.count=mi; armIM.count=mi; wireIM.count=wi; [mastIM,armIM,wireIM].forEach(m=>m.instanceMatrix.needsUpdate=true); }
-const ballastIM=new T.InstancedMesh(box,M.ballast,MAXS), railIM=new T.InstancedMesh(box,M.rail,MAXS*2), sleeperIM=new T.InstancedMesh(box,M.sleeper,MAXS*8), padIM=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,12),M.ballast,MAXS);
+// the track bed: a low gravel embankment with sloping sides, wider at the foot than at the top
+const bedGeo=(()=>{ const g=new T.BoxGeometry(1,1,1); g.translate(0,0.5,0); const a=g.attributes.position; for(let i=0;i<a.count;i++) if(a.getY(i)>0.9) a.setZ(i,a.getZ(i)*0.66); g.computeVertexNormals(); return g; })();
+const ballastIM=new T.InstancedMesh(bedGeo,mat('#a29c93'),MAXS), railIM=new T.InstancedMesh(box,M.rail,MAXS*2), sleeperIM=new T.InstancedMesh(box,M.sleeper,MAXS*8), padIM=new T.InstancedMesh(new T.CylinderGeometry(1,1,1,12),M.ballast,MAXS);
 [ballastIM,railIM,sleeperIM,padIM].forEach(m=>{ m.count=0; m.receiveShadow=true; m.castShadow=true; m.frustumCulled=false; scene.add(m); }); ballastIM.castShadow=false; padIM.castShadow=false;
-const FLY_COST=2000, FLY_HALF=38, FLY_H=8, FLY_DECK=12;
+const FLY_COST=2000, FLY_HALF=54, FLY_H=12, FLY_DECK=14;
 let flyovers=[];
 function sharesNode(a,b){ return a.a===b.a||a.a===b.b||a.b===b.a||a.b===b.b; }
 function computeFlyovers(){ flyovers=[]; const es=[...edges.values()].filter(e=>!e.internal), idx=new Map(es.map((e,i)=>[e,i])), pairs=new Set();
@@ -2062,73 +2067,107 @@ function traceFly(f){ const e=f.e, X={x:f.x,y:f.y}; f.cuts=[]; f.nodes=[]; const
       const nb=[...(adj.get(to)||[])].filter(x=>x!==from); if(nb.length!==1 || portOf.has(to) || nodeSite.has(to)) break; f.nodes.push(to);
       from=to; to=nb[0]; cur=nodes[from]; dStart=0; }
     half.push(pts); }
-  f.poly=[...half[1].slice().reverse().map(q=>({...q,s:-q.s})), {x:X.x,y:X.y,s:0}, ...half[0]]; f.span=[f.poly[0].s, f.poly[f.poly.length-1].s]; }
+  f.poly=[...half[1].slice().reverse().map(q=>({...q,s:-q.s})), {x:X.x,y:X.y,s:0}, ...half[0]]; f.span=[f.poly[0].s, f.poly[f.poly.length-1].s]; f.keys=new Set(f.cuts.map(c=>c.k)); }
 const flyHeight=(f,s)=>{ const a=Math.abs(s), end=s<0?-f.span[0]:f.span[1]; return FLY_H*Math.max(0,Math.min(1,(end-a)/(FLY_HALF-FLY_DECK))); };   // never a cliff: short ramps simply stay lower
 function countNewCrossings(P){ let n=0; if(!edgeHash) buildEdgeHash();
   for(let i=0;i<P.length-1;i++){ const seen=new Set(), es=[]; const p=P[i], q=P[i+1];
     for(let cx=Math.floor(Math.min(p.x,q.x)/EH); cx<=Math.floor(Math.max(p.x,q.x)/EH); cx++) for(let cy=Math.floor(Math.min(p.y,q.y)/EH); cy<=Math.floor(Math.max(p.y,q.y)/EH); cy++){ const l=edgeHash.get(cx+','+cy); if(l) for(const e of l) if(!seen.has(e)){ seen.add(e); if(!e.internal && edges.get(ekey(e.a,e.b))===e) es.push(e); } }
     for(const e of es){ const A=nodes[e.a],B=nodes[e.b]; if(Math.hypot(A.x-P[i].x,A.y-P[i].y)<1||Math.hypot(B.x-P[i].x,B.y-P[i].y)<1||Math.hypot(A.x-P[i+1].x,A.y-P[i+1].y)<1||Math.hypot(B.x-P[i+1].x,B.y-P[i+1].y)<1) continue; const t=segX(P[i],P[i+1],A,B); if(t!==null && t>0.01 && t<0.99) n++; } }
   return n; }
-function flyH(x,y,ang){ for(const f of flyovers){ if(Math.abs(x-f.x)>FLY_HALF+6 || Math.abs(y-f.y)>FLY_HALF+6) continue; const P=f.poly;
+// height of the raised line at a point; ks (an edge key or a set of them) limits it to the line that is actually raised
+function flyH(x,y,ang,ks){ for(const f of flyovers){ if(Math.abs(x-f.x)>FLY_HALF+6 || Math.abs(y-f.y)>FLY_HALF+6) continue; const P=f.poly;
+    if(ks!=null && !(typeof ks==='string' ? f.keys.has(ks) : [...ks].some(k=>f.keys.has(k)))) continue;
     for(let i=0;i<P.length-1;i++){ const A=P[i], B=P[i+1], dx=B.x-A.x, dy=B.y-A.y, L2=dx*dx+dy*dy; if(L2<1e-6) continue; let t=((x-A.x)*dx+(y-A.y)*dy)/L2; if(t<-0.02||t>1.02) continue; t=Math.max(0,Math.min(1,t));
       if(Math.hypot(A.x+dx*t-x,A.y+dy*t-y)<3 && Math.abs(Math.cos(ang-Math.atan2(dy,dx)))>0.8) return flyHeight(f,A.s+(B.s-A.s)*t); } }
   return 0; }
 const flyGroup=new T.Group(); scene.add(flyGroup);
+// another line passing close by (not the raised line itself): supports and walls must stay clear of it
+function crossTrackNear(x,y,r,keys){ const cx=Math.floor(x/EH), cy=Math.floor(y/EH);
+  for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const l=edgeHash.get((cx+dx)+','+(cy+dy)); if(l) for(const e of l){ if(e.internal || (keys && keys.has(ekey(e.a,e.b)))) continue; if(segDist(x,y,nodes[e.a],nodes[e.b])<r) return true; } }
+  return false; }
+const M_CONC=mat('#c9c4ba'), M_WALL=mat('#b3a48c');
 function addFlyover(f){ const g=new T.Group(); flyGroup.add(g); const P=f.poly, step=4;
   const at=sv=>{ for(let i=0;i<P.length-1;i++){ const A=P[i], B=P[i+1]; if(sv<=B.s || i===P.length-2){ const u=(sv-A.s)/((B.s-A.s)||1); return {x:A.x+(B.x-A.x)*u, y:A.y+(B.y-A.y)*u}; } } return P[0]; };
-  const s0=f.span[0], s1=f.span[1], n=Math.max(2,Math.ceil((s1-s0)/step));
+  const s0=f.span[0], s1=f.span[1], n=Math.max(2,Math.ceil((s1-s0)/step)); let lastPier=-99;
   for(let i=0;i<n;i++){ const sa=s0+(s1-s0)*i/n, sb=s0+(s1-s0)*(i+1)/n, A=at(sa), B=at(sb), ha=flyHeight(f,sa), hb=flyHeight(f,sb), L=Math.hypot(B.x-A.x,B.y-A.y); if(L<0.1) continue;
-    const p=new T.Group(); p.position.set((A.x+B.x)/2-CX,(ha+hb)/2+hillH((A.x+B.x)/2,(A.y+B.y)/2),(A.y+B.y)/2-CZ); p.rotation.set(0,-Math.atan2(B.y-A.y,B.x-A.x),Math.atan2(hb-ha,L),'YZX');
-    p.add(mesh(box,M.stone,0,-0.5,0,L+0.6,1.4,9.4)); p.add(mesh(box,M.ballast,0,0.35,0,L+0.6,0.5,7.6,false));
+    const mx=(A.x+B.x)/2, my=(A.y+B.y)/2, gh=hillH(mx,my), hm=(ha+hb)/2, sm=(sa+sb)/2, clear=!crossTrackNear(mx,my,9,f.keys);
+    const p=new T.Group(); p.position.set(mx-CX,hm+gh,my-CZ); p.rotation.set(0,-Math.atan2(B.y-A.y,B.x-A.x),Math.atan2(hb-ha,L),'YZX');
+    p.add(mesh(box,M_CONC,0,-0.6,0,L+0.6,1.6,10.4)); p.add(mesh(box,M.ballast,0,0.35,0,L+0.6,0.5,7.6,false));
     for(const z of [-2.4,2.4]) p.add(mesh(box,M.rail,0,1.1,z,L+0.3,0.6,0.7,false)); p.add(mesh(box,M.sleeper,0,0.7,0,1.6,0.4,7,false));
-    const hm=(ha+hb)/2; if(hm>1.5 && i%3===1) p.add(mesh(box,M.stone,0,-hm/2-0.5,0,1.4,hm-0.6,7));
-    if(Math.abs((sa+sb)/2)<FLY_DECK) for(const z of [-4.9,4.9]) p.add(mesh(box,M.metalDark,0,1.6,z,L+0.3,0.3,0.3,false));
-    g.add(p); } }
+    for(const z of [-5,5]) p.add(mesh(box,M_CONC,0,0.6,z,L+0.6,1.4,0.5,false));               // low parapets
+    g.add(p);
+    if(hm>0.4){ const yaw=-Math.atan2(B.y-A.y,B.x-A.x);
+      if(clear && Math.abs(sm)>FLY_DECK){ const w=mesh(box,M_WALL,0,0,0,L+0.7,hm,9.6); w.position.set(mx-CX,gh+hm/2-1.2,my-CZ); w.rotation.y=yaw; g.add(w); }   // the ramp: a solid wall-sided embankment
+      else if(clear && hm>3 && i-lastPier>=3){ lastPier=i; for(const z of [-3,3]){ const c=mesh(cyl8,M_CONC,0,0,0,1,hm-1,1); c.position.set(mx-CX-Math.sin(yaw)*z,gh+(hm-1)/2-1,my-CZ-Math.cos(yaw)*z); g.add(c); }
+        const cap=mesh(box,M_CONC,0,0,0,2.2,1,10); cap.position.set(mx-CX,gh+hm-1.6,my-CZ); cap.rotation.y=yaw; g.add(cap); } }
+    if(Math.abs(sm)<FLY_DECK+4) for(const z of [-5.4,5.4]){ const gd=mesh(box,M.girder,0,0,0,L+0.4,2.2,0.6); gd.position.set(mx-CX,hm+gh-0.4,my-CZ); gd.rotation.set(0,-Math.atan2(B.y-A.y,B.x-A.x),0); gd.translateZ(z); g.add(gd); }   // steel side girders over the line below
+  } }
 const switchGroup=new T.Group(), bridgeGroup=new T.Group(), portalGroup=new T.Group(); scene.add(switchGroup); scene.add(bridgeGroup); scene.add(portalGroup);
-function addBridge(A,B,t,len){ const dx=B.x-A.x, dy=B.y-A.y; const x=A.x+dx*t, y=A.y+dy*t; len=len||22;
-  const g=new T.Group(); g.position.set(x-CX,flyH(x,y,Math.atan2(dy,dx))+hillH(x,y),y-CZ); g.rotation.y=-Math.atan2(dy,dx);
-  for(const s of [-1,1]){ g.add(mesh(box,M.girder,0,10,s*5.6,len,1,1)); g.add(mesh(box,M.girder,0,2.4,s*5.6,len,1,1));
+// the edge itself and the ones it carries on into: everything else nearby is another line
+function ownKeys(k){ const out=new Set([k]); if(!k) return out; const e=edges.get(k); if(!e) return out;
+  for(const [n,o] of [[e.a,e.b],[e.b,e.a]]){ let p=o, u=n; for(let g=0; g<6 && deg(u)===2; g++){ const v=[...adj.get(u)].find(x=>x!==p); out.add(ekey(u,v)); p=u; u=v; } } return out; }
+function addBridge(A,B,t,len,k){ const dx=B.x-A.x, dy=B.y-A.y; const x=A.x+dx*t, y=A.y+dy*t; len=len||22; const own=ownKeys(k), ux=dx/Math.hypot(dx,dy), uy=dy/Math.hypot(dx,dy);
+  const g=new T.Group(); g.position.set(x-CX,flyH(x,y,Math.atan2(dy,dx),k)+hillH(x,y),y-CZ); g.rotation.y=-Math.atan2(dy,dx);
+  const sideFree=sd=>!crossTrackNear(x-uy*sd*9,y+ux*sd*9,5,own) && !crossTrackNear(x-uy*sd*9+ux*len/2,y+ux*sd*9+uy*len/2,5,own) && !crossTrackNear(x-uy*sd*9-ux*len/2,y+ux*sd*9-uy*len/2,5,own);
+  for(const s of [-1,1]){ if(!sideFree(s)) continue;   // a track running alongside: leave the truss off that side rather than build it through the other line
+    g.add(mesh(box,M.girder,0,10,s*5.6,len,1,1)); g.add(mesh(box,M.girder,0,2.4,s*5.6,len,1,1));
     for(let i=0;i<=5;i++){ const xx=-len/2+i*len/5; g.add(mesh(box,M.girder,xx,6.2,s*5.6,0.8,8,0.8)); if(i<5){ const d=mesh(box,M.girder,xx+len/10,6.2,s*5.6,0.6,9.6,0.6); d.rotation.z=(i%2?1:-1)*0.72; g.add(d); } }
     for(let i=0;i<=8;i++) g.add(mesh(box,M.metalDark,-len/2-6+i*(len+12)/8,3.4,s*6.8,0.4,2.2,0.4,false)); g.add(mesh(box,M.metalDark,0,4.4,s*6.8,len+12,0.4,0.4,false)); }
-  for(let i=0;i<=2;i++) g.add(mesh(box,M.girder,-len/2+i*len/2,10,0,0.8,0.8,12));
-  for(const px of [-len/2,len/2]) g.add(mesh(box,M.brick,px,-2,0,4,6,13));
+  if(sideFree(-1) && sideFree(1)) for(let i=0;i<=2;i++) g.add(mesh(box,M.girder,-len/2+i*len/2,10,0,0.8,0.8,12));
+  for(const px of [-len/2,len/2]){ const ax=x+ux*px, ay=y+uy*px; if(!crossTrackNear(ax,ay,8,own)) g.add(mesh(box,M.brick,px,-2,0,4,6,12)); }
   bridgeGroup.add(g); }
-function addViaduct(x,y,ang,len,pier){ const g=new T.Group(); g.position.set(x-CX,flyH(x,y,ang)+hillH(x,y),y-CZ); g.rotation.y=-ang;
+function addViaduct(x,y,ang,len,pier,k){ const g=new T.Group(); g.position.set(x-CX,flyH(x,y,ang,k)+hillH(x,y),y-CZ); g.rotation.y=-ang;
   for(const sd of [-1,1]) g.add(mesh(box,M.girder,0,0.9,sd*5.2,len+0.4,1.8,0.8,false));
-  if(pier) g.add(mesh(box,M.stone,0,-1.5,0,2.2,3.6,10.5));
+  if(pier && !crossTrackNear(x,y,7.5,ownKeys(k))) g.add(mesh(box,M.stone,0,-1.5,0,2.2,3.6,10.5));
   bridgeGroup.add(g); }
 const TUN_DARK=new T.MeshBasicMaterial({color:'#11151c'});
+const rockGeo=new T.IcosahedronGeometry(1,0), M_PORTAL=mat('#cfc6b4'), M_VOUSS=mat('#e2dccd');
+// a stone tunnel mouth set into the rock: arched facade with a lighter ring, wing walls along the cutting, rock piled round it
 function addPortal(x,y,ang){ const g=new T.Group(); g.position.set(x-CX,0,y-CZ); g.rotation.y=-ang;
-  for(const sd of [-1,1]){ g.add(mesh(box,M.stone,3,7,sd*6.4,5,14,3.6)); const w=mesh(box,M.stone,-3,3.5,sd*7.6,10,7,1.6); w.rotation.y=sd*0.35; g.add(w); }
-  g.add(mesh(box,M.stone,3,13.2,0,5,3.2,16.4)); const ac=mesh(cyl,M.stone,3,9.6,0,4.7,5,4.7); ac.rotation.z=Math.PI/2; g.add(ac);
-  g.add(mesh(box,TUN_DARK,0.3,4.8,0,0.4,9.6,9,false)); const ar=mesh(cyl,TUN_DARK,0.3,9.6,0,4.5,0.4,4.5,false); ar.rotation.z=Math.PI/2; g.add(ar);
+  g.add(mesh(box,TUN_DARK,9,5.6,0,16,11.2,10.6,false));                                        // the dark bore going into the hill
+  const bore=mesh(cyl,TUN_DARK,9,11,0,5.3,16,5.3,false); bore.rotation.z=Math.PI/2; g.add(bore);
+  for(const sd of [-1,1]){ g.add(mesh(box,M_PORTAL,3.4,9,sd*9.6,3,18,8.4));                       // piers either side of the opening
+    const w1=mesh(box,M_PORTAL,-3,5,sd*11.4,11,10,2); w1.rotation.y=sd*0.3; g.add(w1); }   // wing walls holding back the cutting
+  g.add(mesh(box,M_PORTAL,3.4,17.4,0,3,4.8,27.6));                                              // spandrel above the arch
+  const ring=mesh(cyl,M_VOUSS,2.2,11,0,6.6,1.6,6.6); ring.rotation.z=Math.PI/2; g.add(ring);      // the arch ring
+  const hole=mesh(cyl,TUN_DARK,1.3,11,0,5.3,0.4,5.3,false); hole.rotation.z=Math.PI/2; g.add(hole);
+  g.add(mesh(box,TUN_DARK,1.3,5.6,0,0.4,11.2,10.6,false));
+  g.add(mesh(box,M_VOUSS,2.9,20.3,0,4.4,1.2,29));                                               // cornice
+  g.add(mesh(box,M_VOUSS,2.9,13.4,0,3.4,1.6,3.2));                                              // keystone
+  for(const [rx,ry,rz,sx,sy,sz] of [[11,19,0,13,9,18],[9,9,17,9,12,9],[9,9,-17,9,12,9],[13,14,12,10,10,10],[13,14,-12,10,10,10]]){
+    const r=mesh(rockGeo,M.rock,rx,ry,rz,sx,sy,sz); r.rotation.set(rx*0.3,rz*0.2,ry*0.1); g.add(r); }   // rock piled round the mouth so it sits in the slope
   portalGroup.add(g); }
 // visible pieces of the line: inside a mountain nothing is drawn, over a hill the line follows the ground
 function terrainSegs(segs){ const out=[];
   for(const s of segs){ if(!MOUNTAINS.length || !nearTerrain(s.x1,s.y1,s.x2,s.y2)){ out.push(s); continue; }
     const L=Math.hypot(s.x2-s.x1,s.y2-s.y1), n=Math.max(1,Math.ceil(L/6));
     for(let i=0;i<n;i++){ const x1=s.x1+(s.x2-s.x1)*i/n, y1=s.y1+(s.y2-s.y1)*i/n, x2=s.x1+(s.x2-s.x1)*(i+1)/n, y2=s.y1+(s.y2-s.y1)*(i+1)/n;
-      if(rockH((x1+x2)/2,(y1+y2)/2)>TUN) continue; out.push({x1,y1,x2,y2,h1:hillH(x1,y1),h2:hillH(x2,y2)}); } }
+      if(rockH((x1+x2)/2,(y1+y2)/2)>TUN) continue; out.push({x1,y1,x2,y2,h1:hillH(x1,y1),h2:hillH(x2,y2),k:s.k}); } }
   return out; }
 let decorSig=null;
 function rebuildTracks(){
   buildEdgeHash(); computeFlyovers(); const segs=trackSegments(), vsegs=terrainSegs(segs); let b=0,r=0,sl=0,pd=0;
+  let carry=2.3, px0=null, py0=null;   // sleepers run on at an even spacing from one piece of a curve to the next
   for(const s of vsegs){ if(b>=MAXS) break; const dx=s.x2-s.x1, dy=s.y2-s.y1, L=Math.hypot(dx,dy); if(L<0.01) continue; const ang=-Math.atan2(dy,dx), mx=(s.x1+s.x2)/2-CX, mz=(s.y1+s.y2)/2-CZ;
     const h1=s.h1||0, h2=s.h2||0, hm=(h1+h2)/2, pit=Math.atan2(h2-h1,L), LL=Math.hypot(L,h2-h1), px=-dy/L, py=dx/L;
-    setInstP(ballastIM,b++,mx,0.6+hm,mz,LL+1.2,1.2,10,ang,pit);
+    if(!s.thr) setInstP(ballastIM,b++,mx,hm-0.05,mz,LL+1.6,1.45,14.5,ang,pit);   // the switches of a throat share one gravel bed (below)
     for(const sg of [-1,1]) setInstP(railIM,r++,mx+px*2.4*sg,2.2+hm,mz+py*2.4*sg,LL+0.4,0.9,0.9,ang,pit);
-    const n=Math.max(1,Math.round(L/4.6)); for(let i=0;i<n && sl<MAXS*8;i++){ const f=(i+0.5)/n; setInst(sleeperIM,sl++,s.x1+dx*f-CX,1.45+h1+(h2-h1)*f,s.y1+dy*f-CZ,1.8,0.7,8.4,ang); } }
+    if(px0===null || Math.hypot(s.x1-px0,s.y1-py0)>0.5) carry=2.3; px0=s.x2; py0=s.y2;
+    let d=s.thr?L:carry; for(; d<L && sl<MAXS*8; d+=4.6){ const f=d/L; setInst(sleeperIM,sl++,s.x1+dx*f-CX,1.55+h1+(h2-h1)*f,s.y1+dy*f-CZ,1.8,0.7,8.4,ang); } carry=d-L; }
   for(const [id,set] of adj){ if(!set.size||pd>=MAXS||set.size===2||nodeSite.has(id)||portOf.has(id)) continue; const n=nodes[id]; setInst(padIM,pd++,n.x-CX,0.6+hillH(n.x,n.y),n.y-CZ,5.2,1.2,5.2); }
+  for(const st of SITES) for(const L of st.side){ const used=L.filter(portUsed); if(!used.length || L.length<2 || b>=MAXS) continue; const po=portOf.get(L[0]);
+    const D=Math.max(...used.map(u=>{ const F=fanPt(u), n=nodes[u]; return Math.hypot(F.x-n.x,F.y-n.y); })), lx=po.dir*(st.plen/2+(po.dir>0?4:8)+D/2-3), [cx,cy]=toW(st,lx,0);
+    setInstP(ballastIM,b++,cx-CX,-0.05,cy-CZ,D+8,1.45,(st.plat-1)*PLAT_GAP+15,-st.ang,0); }
   ballastIM.count=b; railIM.count=r; sleeperIM.count=sl; padIM.count=pd;
   [ballastIM,railIM,sleeperIM,padIM].forEach(m=>m.instanceMatrix.needsUpdate=true);
   bridgeGroup.clear(); portalGroup.clear(); switchGroup.clear(); flyGroup.clear(); flyovers.forEach(addFlyover); buildCatenary(vsegs.filter(s=>!s.thr));
-  { const done=[]; for(const sg of segs){ const A={x:sg.x1,y:sg.y1}, B={x:sg.x2,y:sg.y2};
+  { const done=[]; for(const sg of segs){ if(sg.thr) continue; const A={x:sg.x1,y:sg.y1}, B={x:sg.x2,y:sg.y2};
       for(const [p,q] of riverSegs){ const t=segX(A,B,{x:p[0],y:p[1]},{x:q[0],y:q[1]}); if(t===null) continue; const x=A.x+(B.x-A.x)*t, y=A.y+(B.y-A.y)*t; if(done.some(d=>Math.hypot(d.x-x,d.y-y)<14)) continue;
         const [ux,uy]=unit(A.x,A.y,B.x,B.y), [rx,ry]=unit(p[0],p[1],q[0],q[1]), sn=Math.abs(ux*ry-uy*rx); done.push({x,y,truss:sn>=0.5});
-        if(sn>=0.5) addBridge(A,B,t,Math.min(60,16/sn+8)); }
+        if(sn>=0.5) addBridge(A,B,t,Math.min(60,16/sn+8),sg.k); }
       // running along the water: a low girder viaduct instead of a row of truss bridges
       const L=Math.hypot(B.x-A.x,B.y-A.y); if(!nearRiver((A.x+B.x)/2,(A.y+B.y)/2,9+L/2)) continue; const n=Math.max(1,Math.round(L/6)), ang=Math.atan2(B.y-A.y,B.x-A.x);
-      for(let k=0;k<n;k++){ const f=(k+0.5)/n, x=A.x+(B.x-A.x)*f, y=A.y+(B.y-A.y)*f; if(!nearRiver(x,y,9) || done.some(d=>Math.hypot(d.x-x,d.y-y)<14 && d.truss)) continue; addViaduct(x,y,ang,L/n,k%3===1); } } }
+      for(let k=0;k<n;k++){ const f=(k+0.5)/n, x=A.x+(B.x-A.x)*f, y=A.y+(B.y-A.y)*f; if(!nearRiver(x,y,9) || done.some(d=>Math.hypot(d.x-x,d.y-y)<14 && d.truss)) continue; addViaduct(x,y,ang,L/n,k%3===1,sg.k); } } }
   // tunnel portals exactly where the line enters the rock
   if(MOUNTAINS.length) for(const sg of segs){ if(!nearTerrain(sg.x1,sg.y1,sg.x2,sg.y2)) continue; const L=Math.hypot(sg.x2-sg.x1,sg.y2-sg.y1), n=Math.max(2,Math.ceil(L/3)), ang=Math.atan2(sg.y2-sg.y1,sg.x2-sg.x1); let was=rockH(sg.x1,sg.y1)>TUN;
     for(let i=1;i<=n;i++){ const x=sg.x1+(sg.x2-sg.x1)*i/n, y=sg.y1+(sg.y2-sg.y1)*i/n, now=rockH(x,y)>TUN; if(now!==was){ addPortal(x,y, now?ang:ang+Math.PI); was=now; } } }
@@ -2228,13 +2267,16 @@ function placeTrain(tr,now,dtReal){
   if(tr.st==='wreck'){ parts.forEach((m,i)=>{ m.rotation.z=Math.sin(i*1.7)*0.5; m.rotation.x=(i%2?0.35:-0.35); }); return; }
   if(tr.at!=null && (tr.st==='dwell'||tr.st==='ready'||tr.st==='notrack')){
     const n=nodes[tr.at], s=nodeSite.get(tr.at), half=(s.plat-1)/2*PLAT_GAP; const oz = tr.plat>=0 ? tr.plat*PLAT_GAP-half : half+PLAT_GAP;
-    const f=tr.face||1; parts.forEach((m,i)=>{ const [wx,wy]=toW(s,f*(s.front-OFFS(i)),oz); m.position.set(wx-CX,1.2,wy-CZ); m.rotation.set(0,-(s.ang+(f<0?Math.PI:0)),0); }); tr.trail=[]; return; }
-  const p=pos(tr), tl=tr.trail;
+    const f=tr.face||1, [hx,hy]=toW(s,f*s.front,oz), tl=tr.trail;
+    // a long train that sticks out of the platform follows the curve it came in on
+    if(tl.length>1 && Math.hypot(tl[0].x-hx,tl[0].y-hy)<3){ parts.forEach((m,i)=>{ const q=along(tl,OFFS(i),tr.ang); m.position.set(q.x-CX,1.2+(flyovers.length?flyH(q.x,q.y,q.ang):0),q.y-CZ); m.rotation.set(0,-q.ang,0); }); return; }
+    parts.forEach((m,i)=>{ const [wx,wy]=toW(s,f*(s.front-OFFS(i)),oz); m.position.set(wx-CX,1.2,wy-CZ); m.rotation.set(0,-(s.ang+(f<0?Math.PI:0)),0); }); tr.trail=[]; return; }
+  const p=pos(tr), tl=tr.trail; let ks=null; if(flyovers.length && tr.path){ ks=new Set(); for(let i=Math.max(0,tr.pi-8);i<Math.min(tr.path.length-1,tr.pi+2);i++) ks.add(ekey(tr.path[i],tr.path[i+1])); }
   if(!tl.length || Math.hypot(tl[0].x-p.x,tl[0].y-p.y)>0.7){ tl.unshift({x:p.x,y:p.y}); if(tl.length>420) tl.pop(); }
   const hilly=MOUNTAINS.some(m=>m.hill && Math.hypot(m.x-p.x,m.y-p.y)<m.bound+OFFS(parts.length)+20);
   parts.forEach((m,i)=>{ const q=along(tl,OFFS(i),tr.ang); const bob=tr.st==='run'?Math.sin(now/90+i)*0.15:0; let hh=0, pit=0;
     if(hilly){ const c=Math.cos(q.ang)*5, sn=Math.sin(q.ang)*5, hf=hillH(q.x+c,q.y+sn), hb=hillH(q.x-c,q.y-sn); hh=(hf+hb)/2; pit=Math.atan2(hf-hb,10); }
-    m.position.set(q.x-CX,1.2+bob+hh+(flyovers.length?flyH(q.x,q.y,q.ang):0),q.y-CZ); m.rotation.set(0,-q.ang,pit); });
+    m.position.set(q.x-CX,1.2+bob+hh+(flyovers.length?flyH(q.x,q.y,q.ang,ks):0),q.y-CZ); m.rotation.set(0,-q.ang,pit); });
 
 }
 const effects=[], floats=[];
