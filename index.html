@@ -927,6 +927,7 @@ const LOCO_COLORS = ['#ff5a4f','#3d8bff','#7b6cff','#ff8a2b','#14b8a6','#ff6fb5'
 const SC = 10, KM_PER_UNIT = 0.715/SC, TRAIN_KMH = 70, SPEED = TRAIN_KMH/60/KM_PER_UNIT;
 const SPEEDS=[0,1,5,15], SPEED_LABEL=['⏸','1×','5×','15×'];
 const MIN_DWELL=2, REPAIR_MIN=120, CAP=12, CORNER=10, PLAT_GAP=13, PLAT_FRONT=52, START_MONEY=30000;
+const THROAT=34;   // straight lead out of a station end: room for the switches to every platform track
 const EVERY=[24,12,8,6,4,3,2];
 
 /* ================= map ================= */
@@ -1146,8 +1147,7 @@ function routePath(from,to,avoid,startPrev){
     let thrOrigin=null; if(p>=0 && throatKeys.has(ekey(p,u))){ let k=ku; while(k){ const [a,b]=k.split('>').map(Number); if(a<0 || !throatKeys.has(ekey(a,b))){ thrOrigin=a; break; } k=prev.get(k); } }
     const inThr = p>=0 && throatKeys.has(ekey(p,u));
     for(const v of adj.get(u)||[]){ const thrUV=throatKeys.has(ekey(u,v));
-      if(thrUV && !inThr && p>=0 && !nodeSite.has(p) && !fanPorts.has(u)) continue;          // a line joined to one track has no switches to the others
-      if(!thrUV && inThr && !nodeSite.has(v) && !fanPorts.has(u)) continue;
+      // every station end has a throat: switches from each line to every platform track at that end
       const sw = portOf.has(u) && p>=0 && (nodeSite.has(p) || throatKeys.has(ekey(p,u)) || throatKeys.has(ekey(u,v))) && v!==p;   // station switches: no turn limit inside the throat
       if(rev && p>=0 && v!==p){ const a=portOf.get(p), c=portOf.get(v); if(a && c && a.k!==c.k) continue; }
       if(!rev && !sw && (v===p || (p>=0 && !turnOK(p,u,v)))) continue; const kv=u+'>'+v; if(done.has(kv)) continue;
@@ -1384,13 +1384,22 @@ const ownStart=(tr,q)=>{ if(!q || q.length<2 || tr.plat<0 || !nodeSite.has(q[0])
 function tracksUsed(S,tr){ const used=new Set(trainsAt(S).filter(o=>o!==tr).map(o=>o.plat));
   for(const o of trains){ if(o===tr || !o.path) continue; if(o._arrGrant===S && o.path[o.path.length-1]===S){ const q=portOf.get(o.path[o.path.length-2]); if(q) used.add(q.k); } if(o._pass && o._pass.node===S) used.add(o._pass.k); }
   return used; }
+// platform tracks other trains stand on or have been promised: a detour must not run through them
+function platAvoid(tr,set){ for(const st of SITES){ const used=tracksUsed(st.node,tr); for(const k of used) for(const dd of [0,1]) set.add(ekey(st.side[dd][k],st.node)); } return set; }
+// the station this block runs through must have the track the path uses free (and keep it promised to us)
+function passFree(tr,p){ const S=blockFrom(p,tr.pi).end, dest=p[p.length-1], j=p.indexOf(S,tr.pi+1); if(S===dest || !nodeSite.has(S) || j<1) return true;
+  const q=portOf.get(p[j-1]); if(!q) return true; if(tr._pass && tr._pass.node===S && tr._pass.k===q.k) return true;
+  if(tracksUsed(S,tr).has(q.k)) return false; tr._pass={node:S,k:q.k}; return true; }
 function tryEnter(tr){
   let p=tr.path; const n=p[tr.pi], dest=p[p.length-1];
   if(tr._pass && p.indexOf(tr._pass.node,tr.pi)<0) tr._pass=null;
   { const S=blockFrom(p,tr.pi).end, j=p.indexOf(S,tr.pi+1);   // running through a station on the way
     if(S!==dest && nodeSite.has(S) && j>0 && !(tr._pass && tr._pass.node===S)){ const q=portOf.get(p[j-1]);
-      if(q && tracksUsed(S,tr).has(q.k)){ tr.why=L(`čeká – v ${nodeSite.get(S).name} je kolej ${q.k+1} obsazená`,`waiting – track ${q.k+1} at ${nodeSite.get(S).name} is occupied`,`wartet – Gleis ${q.k+1} in ${nodeSite.get(S).name} ist belegt`); return false; }
-      if(q) tr._pass={node:S,k:q.k}; } }
+      if(q && tracksUsed(S,tr).has(q.k)){ const used=tracksUsed(S,tr), st=nodeSite.get(S), av=new Set(); for(const k of used) for(const dd of [0,1]) av.add(ekey(st.side[dd][k],S));
+        const alt=routePath(n,dest,av,tr.pi>0?p[tr.pi-1]:null), ja=alt?alt.indexOf(S):-1, qa=ja>0?portOf.get(alt[ja-1]):null;
+        if(alt && qa && !used.has(qa.k) && ownStart(tr,alt) && pathLen(alt)<=pathLen(p.slice(tr.pi))*1.3+80){ tr.path=p=alt; tr.pi=0; tr._pass={node:S,k:qa.k}; } }
+      if(q && !(tr._pass && tr._pass.node===S) && tracksUsed(S,tr).has(q.k)){ tr.why=L(`čeká – v ${nodeSite.get(S).name} je kolej ${q.k+1} obsazená`,`waiting – track ${q.k+1} at ${nodeSite.get(S).name} is occupied`,`wartet – Gleis ${q.k+1} in ${nodeSite.get(S).name} ist belegt`); return false; }
+      if(q && !(tr._pass && tr._pass.node===S)) tr._pass={node:S,k:q.k}; } }
   if(tr.pi===0 && isStationNode(n) && nodeSite.has(dest) && dest!==n){ const vias=(tr.vias||[])[tr.stopIdx]||[];
     if(!vias.length){ const r=arrivalFree(tr,n,dest); if(!r){ const dn=nodeSite.get(dest).name; tr.why=L(`čeká – v ${dn} není volná kolej (postav další kolej nebo výhybku)`,`waiting – no free track at ${dn} (add a track or a switch)`,`wartet – in ${dn} ist kein Gleis frei (Gleis oder Weiche bauen)`); return false; }
       if(pathLen(r)<=pathLen(p)*1.3+60){ tr.path=p=r; } tr._arrGrant=dest; } }
@@ -1405,7 +1414,7 @@ function tryEnter(tr){
   if(signals.has(n) || isStationNode(n)){
     // like a dispatcher: if a train is coming the other way on our track, take the other track of a passing loop
     const opp=opposingEdges(tr,p,tr.pi);
-    if(opp.size){ const alt=routePath(n,dest,opp,tr.pi>0?p[tr.pi-1]:null);
+    if(opp.size){ const alt=routePath(n,dest,platAvoid(tr,new Set(opp)),tr.pi>0?p[tr.pi-1]:null);
       const oc=q=>{ let c=0; for(let i=0;i<q.length-1;i++) if(opp.has(ekey(q[i],q[i+1]))) c++; return c; };
       if(alt && alt.length>1 && ownStart(tr,alt) && pathLen(alt)<=pathLen(p.slice(tr.pi))*1.3+60 && oc(alt)<oc(p.slice(tr.pi))){ tr.path=p=alt; tr.pi=0; } }
     if(!isStationNode(n) && nodeSite.has(dest) && blockFrom(p,tr.pi).end===dest){
@@ -1415,10 +1424,11 @@ function tryEnter(tr){
     let blk=blockFrom(p,tr.pi);
     if(blockBusy(blk,tr)){
       const busy=new Set(); for(const [k,v] of occ) if(v!==tr.id) busy.add(k); for(const o of trains) if(o!==tr && o.st==='run'){ const k=curEdge(o); if(k) busy.add(k); }
-      let alt=routePath(n,dest,busy,tr.pi>0?p[tr.pi-1]:null); if(alt && (pathLen(alt)>pathLen(p.slice(tr.pi))*1.25+40 || !ownStart(tr,alt))) alt=null;   // only a real shortcut around the busy track, never circling
+      platAvoid(tr,busy); let alt=routePath(n,dest,busy,tr.pi>0?p[tr.pi-1]:null); if(alt && (pathLen(alt)>pathLen(p.slice(tr.pi))*1.25+40 || !ownStart(tr,alt))) alt=null;   // only a real shortcut around the busy track, never circling
       if(alt && alt.length>1){ const ab=blockFrom(alt,0); if(!blockBusy(ab,tr)){ tr.path=p=alt; tr.pi=0; blk=ab; } else { tr.why=L('stojí u návěstidla','held at a signal','hält am Signal'); return false; } }
       else { tr.why=L('stojí u návěstidla','held at a signal','hält am Signal'); return false; }
     }
+    if(!passFree(tr,p)){ const S=blockFrom(p,tr.pi).end; tr.why=L(`čeká – v ${nodeSite.get(S).name} není volná kolej pro průjezd`,`waiting – no free track to pass through ${nodeSite.get(S).name}`,`wartet – in ${nodeSite.get(S).name} ist kein Gleis für die Durchfahrt frei`); return false; }
     blk.edges.forEach(k=>occ.set(k,tr.id));
   }
   if(tr.pi===0 && isStationNode(n)) tr.plat=-1;
@@ -1429,7 +1439,9 @@ function tryEnter(tr){
 const trainLen = o => 12.6+o.consist.length*11.6;
 // distance from this train's front to the back of the train ahead on the same track (Infinity if none close)
 function gapAhead(tr){ const p=tr.path, a=p[tr.pi], b=p[tr.pi+1], c=p[tr.pi+2], L=segLen(p,tr.pi); let best=Infinity;
+  const myK = nodeSite.has(b) ? portOf.get(a)?.k : null;   // running into a station: only a train on this same platform track is ahead
   for(const o of trains){ if(o===tr || !o.path || (o.st!=='run' && o.st!=='hold')) continue; const oa=o.path[o.pi], ob=o.path[o.pi+1]; let d=Infinity;
+    if(myK!=null && oa===b && o.st==='hold' && o.pi===0 && o.plat!==myK) continue;
     if(oa===a && ob===b && o.t>tr.t) d=o.t-tr.t; else if(oa===b && ob===c && c!=null) d=L-tr.t+o.t; else if(o.st==='hold' && oa===b) d=L-tr.t;
     if(d<Infinity) best=Math.min(best,d-trainLen(o)); }
   return best; }
@@ -1444,7 +1456,7 @@ function move(tr,dt){
     tr.t-=L; tr.pi++; const n=p[tr.pi];
     if(tr.pi<p.length-1){ const nb=p[tr.pi+1], nk=ekey(n,nb), own=occ.get(nk);
       if((own!==undefined && own!==tr.id) || trains.some(o=>o!==tr && o.path && (o.st==='run'||o.st==='hold') && curEdge(o)===nk && o.path[o.pi]===nb)){
-        tr.t=0; tr.st='hold'; tr.check=1; tr.why=L('čeká – kolej před ním je obsazená','waiting – the track ahead is occupied','wartet – das Gleis vor ihm ist belegt'); return; } }
+        tr.t=0; tr.st='hold'; tr.check=1; tr.why=tx(['čeká – kolej před ním je obsazená','waiting – the track ahead is occupied','wartet – das Gleis vor ihm ist belegt']); return; } }
     if(!isStationNode(n)){ const o=trains.find(o=>o!==tr && stoppedNode(o)===n); if(o){ crash(tr,o); return; } }
     if(tr.pi>=p.length-1){ tr.t=0; arrive(tr); return; }
     const last=p[p.length-1];
@@ -1621,7 +1633,7 @@ function planBuildWith(A,B,sp0,ep0,kf,bend){
   else if(B.kind==='node'){ E={id:B.id}; const n=nodes[B.id]; eDir=bestDir(arriveDirs(B.id),unit(sp.x,sp.y,n.x,n.y)); }
   else if(B.kind==='edge'){ E={edge:B}; eDir=edgeDir(B,unit(sp.x,sp.y,B.x,B.y)); }
   else E={x:B.x,y:B.y};
-  const EP=ptPos(E), LS=A.kind==='station'?{x:sp.x+sDir[0]*14, y:sp.y+sDir[1]*14}:null, LE=B.kind==='station'?{x:EP.x-eDir[0]*14, y:EP.y-eDir[1]*14}:null;
+  const EP=ptPos(E), LS=A.kind==='station'?{x:sp.x+sDir[0]*THROAT, y:sp.y+sDir[1]*THROAT}:null, LE=B.kind==='station'?{x:EP.x-eDir[0]*THROAT, y:EP.y-eDir[1]*THROAT}:null;
   if(LS) sp=LS; const ep=LE||EP, D=Math.hypot(ep.x-sp.x,ep.y-sp.y), c=Math.max(24,D*kf);
   const c1 = sDir ? {x:sp.x+sDir[0]*c, y:sp.y+sDir[1]*c} : {x:sp.x+(ep.x-sp.x)/3, y:sp.y+(ep.y-sp.y)/3};
   const c2 = eDir ? {x:ep.x-eDir[0]*c, y:ep.y-eDir[1]*c} : {x:ep.x-(ep.x-sp.x)/3, y:ep.y-(ep.y-sp.y)/3};
@@ -2012,6 +2024,9 @@ function trackSegments(){
     const [ax,ay]=unit(N.x,N.y,nodes[a].x,nodes[a].y), [bx,by]=unit(N.x,N.y,nodes[b].x,nodes[b].y);
     const p0={x:N.x+ax*R,y:N.y+ay*R}, p2={x:N.x+bx*R,y:N.y+by*R}, steps=Math.max(4,Math.round(R/5)); let prev=p0;
     for(let k=1;k<=steps;k++){ const q=bez(p0,N,p2,k/steps); segs.push({x1:prev.x,y1:prev.y,x2:q.x,y2:q.y}); prev=q; } }
+  for(const st of SITES) for(const L of st.side){ const used=L.filter(portUsed); if(!used.length || L.length<2) continue;
+    for(const k of L){ const P=nodes[k], po=portOf.get(k), [ex,ey]=toW(st,po.dir*(st.plen/2-2),po.k*PLAT_GAP-(st.plat-1)/2*PLAT_GAP); segs.push({x1:ex,y1:ey,x2:P.x,y2:P.y,thr:1}); }
+    for(const u of used){ const F=fanPt(u); for(const k of L){ if(k===u) continue; const P=nodes[k]; segs.push({x1:F.x,y1:F.y,x2:P.x,y2:P.y,thr:1}); } } }
   return segs;
 }
 const MAXS=20000;
@@ -2106,7 +2121,7 @@ function rebuildTracks(){
   for(const [id,set] of adj){ if(!set.size||pd>=MAXS||set.size===2||nodeSite.has(id)||portOf.has(id)) continue; const n=nodes[id]; setInst(padIM,pd++,n.x-CX,0.6+hillH(n.x,n.y),n.y-CZ,5.2,1.2,5.2); }
   ballastIM.count=b; railIM.count=r; sleeperIM.count=sl; padIM.count=pd;
   [ballastIM,railIM,sleeperIM,padIM].forEach(m=>m.instanceMatrix.needsUpdate=true);
-  bridgeGroup.clear(); portalGroup.clear(); switchGroup.clear(); flyGroup.clear(); flyovers.forEach(addFlyover); buildCatenary(vsegs);
+  bridgeGroup.clear(); portalGroup.clear(); switchGroup.clear(); flyGroup.clear(); flyovers.forEach(addFlyover); buildCatenary(vsegs.filter(s=>!s.thr));
   { const done=[]; for(const sg of segs){ const A={x:sg.x1,y:sg.y1}, B={x:sg.x2,y:sg.y2};
       for(const [p,q] of riverSegs){ const t=segX(A,B,{x:p[0],y:p[1]},{x:q[0],y:q[1]}); if(t===null) continue; const x=A.x+(B.x-A.x)*t, y=A.y+(B.y-A.y)*t; if(done.some(d=>Math.hypot(d.x-x,d.y-y)<14)) continue;
         const [ux,uy]=unit(A.x,A.y,B.x,B.y), [rx,ry]=unit(p[0],p[1],q[0],q[1]), sn=Math.abs(ux*ry-uy*rx); done.push({x,y,truss:sn>=0.5});
@@ -2186,8 +2201,17 @@ function removeTrainMesh(tr){ (tr.parts||[]).forEach(p=>scene.remove(p)); tr.par
 function along(tl,D,fb){ let acc=0; for(let k=0;k<tl.length-1;k++){ const a=tl[k], b=tl[k+1]; const l=Math.hypot(b.x-a.x,b.y-a.y); if(acc+l>=D){ const f=(D-acc)/l; return {x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f, ang:Math.atan2(a.y-b.y,a.x-b.x)}; } acc+=l; }
   const last=tl[tl.length-1]; if(!last) return {x:0,y:0,ang:fb}; let ang=fb; if(tl.length>1){ const p=tl[tl.length-2]; ang=Math.atan2(p.y-last.y,p.x-last.x); } return {x:last.x,y:last.y,ang}; }
 // Inside a station a train runs straight along its own platform track: the station centre is replaced by the platform end.
+// where a line's switches start: a little way out from the platform end, along the line's straight lead
+function fanPt(id){ const po=portOf.get(id), n=nodes[id], ox=po.s.ax[0]*po.dir, oy=po.s.ax[1]*po.dir; let D=THROAT-2;
+  for(const x of adj.get(id)||[]){ if(internalEdge(id,x)) continue; const pr=(nodes[x].x-n.x)*ox+(nodes[x].y-n.y)*oy; if(pr>4) D=Math.min(D,pr-1); }
+  return {x:n.x+ox*D, y:n.y+oy*D}; }
+// Through the station throat a train runs on a diagonal from the line's switch to its platform track.
 function NP(p,i){ const id=p[i], s=nodeSite.get(id);
-  if(!s){ const po=portOf.get(id); if(po){ const pr=p[i-1], nx=p[i+1], lineSide=(portOf.has(pr) && nx!=null && !portOf.has(nx) && !nodeSite.has(nx)) || (portOf.has(nx) && pr!=null && !portOf.has(pr) && !nodeSite.has(pr)); if(lineSide){ const n=nodes[id]; return {x:n.x+po.s.ax[0]*po.dir*18, y:n.y+po.s.ax[1]*po.dir*18}; } } return nodes[id]; } const nb=p[i>0?i-1:i+1], po=portOf.get(nb); if(!po || po.s!==s) return nodes[id];
+  if(!s){ const po=portOf.get(id); if(po){ const same=j=>{ const q=portOf.get(p[j]); return !!q && q.s===po.s && q.dir===po.dir; };
+      let i0=i, i1=i; while(i0>0 && same(i0-1)) i0--; while(i1<p.length-1 && same(i1+1)) i1++;
+      if(i1>i0){ const end=(j,o)=>{ const x=p[o]; return (x!=null && !portOf.has(x) && !nodeSite.has(x)) ? fanPt(p[j]) : nodes[p[j]]; };
+        const A=end(i0,i0-1), B=end(i1,i1+1), f=(i-i0)/(i1-i0); return {x:A.x+(B.x-A.x)*f, y:A.y+(B.y-A.y)*f}; } }
+    return nodes[id]; } const nb=p[i>0?i-1:i+1], po=portOf.get(nb); if(!po || po.s!==s) return nodes[id];
   const oz=po.k*PLAT_GAP-(s.plat-1)/2*PLAT_GAP, [x,y]=toW(s, (i>0?-po.dir:po.dir)*s.front, oz); return {x,y}; }
 const segLen=(p,i)=>{ const A=NP(p,i), B=NP(p,i+1); return Math.hypot(B.x-A.x,B.y-A.y); };
 function pos(tr){
@@ -2903,15 +2927,23 @@ function loadState(st){
   for(const x of st.sites||[]){ const s=site(x.id); if(!s) continue; Object.assign(s.stock,x.stock||{}); Object.assign(s.inbuf,x.inbuf||{}); s.tm=x.tm||{}; if(s.levels){ s.lvl=x.lvl||0; s.log=x.log||[]; s.since=x.since||0; s.best=x.best||0; s.got={}; s.done=!!x.done; } }
   for(const t of st.trains||[]) if(t.route.every(id=>site(id))) makeTrain(t);
   nextId=Math.max(nextId,st.nextId||1);
+  loadedAt=st.savedAt||'';
   consumers.forEach(refreshLabel); setMoney(money); addScore(0); rebuildTracks(); renderNeeds(); ready=was; return true;
 }
+// the copy in the account can be older than the one on the phone: the cloud write often does not finish before the app closes
+let loadedAt='', synced=false; setTimeout(()=>{ synced=true; },15000);   // nothing is written until the account copy has been compared
+const newer=st=>!!st && (st.savedAt||'')>loadedAt;
 function dirty(){ if(!ready) return; clearTimeout(saveTimer); saveTimer=setTimeout(save,2500); }
-setInterval(()=>dirty(),30000);
+setInterval(()=>dirty(),20000);
+// the phone copy is cheap: keep it fresh every few seconds so closing the app never loses earnings
+function saveLocal(){ if(!ready || !synced) return; try{ const st=snapshotState(); localStorage.setItem(SAVE_KEY,JSON.stringify(st)); loadedAt=st.savedAt; }catch(e){} }
+setInterval(saveLocal,5000);
 let saveFailed=false;
 async function save(){
+  if(!synced){ dirty(); return; }
   if(saving){ saveAgain=true; return; } saving=true; saveFailed=false;
   const st=snapshotState(), praha=consumers[0].done?3:consumers[0].lvl+1;
-  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(st)); }catch(e){}
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify(st)); loadedAt=st.savedAt; }catch(e){}
   if(TUT){ setSave(['Tutoriál uložen v zařízení','Tutorial saved on this device','Tutorial auf dem Gerät gespeichert'],false); saving=false; return; }
   try{
     if(mode==='claude'){ await db.doc(`data/users/${uid}/game`).set(st); await db.doc(`scores/${uid}`).set({score, praha, won, updatedAt:st.savedAt}); setSave(['Uloženo','Saved','Gespeichert'],true); }
@@ -2932,11 +2964,12 @@ async function initAccount(){
     if(userCap){ try{ const me=await userCap.me(); uid=me.id; myName=me.name||''; if(me.avatarUrl) $('avatar').src=me.avatarUrl; }catch(e){} } }
   if(db && uid){
     mode='claude'; setPlayer(myName||['Přihlášený hráč','Signed-in player','Angemeldeter Spieler'],null,['Načítám postup…','Loading progress…','Lade Fortschritt…'],true);
-    try{ const snap=await db.doc(`data/users/${uid}/game`).get(); if(!TUT && snap.exists && loadState(snap.data())) restored=true; }catch(e){}
+    try{ const snap=await db.doc(`data/users/${uid}/game`).get(); if(!TUT && snap.exists && newer(snap.data()) && loadState(snap.data())) restored=true; }catch(e){}
+    synced=true; if(restored) dirty();
     setSave(['Postup se ukládá','Progress is saved','Fortschritt wird gespeichert'],true);
     try{ db.collection('scores').orderBy('score','desc').limit(20).onSnapshot(s=>{ board=s.docs.map(d=>({id:d.id,...d.data()})); boardMsg=board.length?'':['Zatím nikdo nehrál. Buď první!','Nobody has played yet. Be the first!','Noch hat niemand gespielt. Sei der Erste!']; if(!$('levelsView').hidden) renderLevels(); }, ()=>{ boardMsg=['Žebříček teď není dostupný.','The leaderboard is not available right now.','Die Rangliste ist gerade nicht verfügbar.']; }); }catch(e){}
   } else if(window.FIREBASE_CONFIG){ setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); boardMsg=['Žebříček uvidíš po přihlášení přes Google.','Sign in with Google to see the leaderboard.','Melde dich mit Google an, um die Rangliste zu sehen.']; initFirebase(window.FIREBASE_CONFIG); }
-  else { setPlayer(['Hráč','Player','Spieler'],null,['Ukládá se v zařízení','Saved on this device','Auf dem Gerät gespeichert'],false); boardMsg=['Žebříček je dostupný po přihlášení. Teď se postup ukládá jen v tomto zařízení.','The leaderboard is available after signing in. Right now progress is saved on this device only.','Die Rangliste gibt es nach der Anmeldung. Jetzt wird nur auf diesem Gerät gespeichert.']; }
+  else { synced=true; setPlayer(['Hráč','Player','Spieler'],null,['Ukládá se v zařízení','Saved on this device','Auf dem Gerät gespeichert'],false); boardMsg=['Žebříček je dostupný po přihlášení. Teď se postup ukládá jen v tomto zařízení.','The leaderboard is available after signing in. Right now progress is saved on this device only.','Die Rangliste gibt es nach der Anmeldung. Jetzt wird nur auf diesem Gerät gespeichert.']; }
   ready=true; introResumed=restored; if(window.__TEST) return; openMenu('main');
 }
 const FB_VER='10.12.2';
@@ -2949,11 +2982,11 @@ async function initFirebase(cfg){
     fb.auth.onAuthStateChanged(async u=>{
       if(u){ uid=u.uid; myName=u.displayName||'Hráč'; fb.photo=u.photoURL||''; mode='firebase'; setPlayer(myName,fb.photo,['Načítám postup…','Loading progress…','Lade Fortschritt…'],true);
         try{ const d=await fb.db.collection('players').doc(uid).get();
-          if(TUT){ } else if(d.exists){ loadState(JSON.parse(d.data().state)); toast(L(`Vítej, ${myName}! Postup je nahraný z tvého účtu.`,`Welcome, ${myName}! Progress loaded from your account.`,`Willkommen, ${myName}! Fortschritt aus deinem Konto geladen.`),'good'); }
+          if(TUT){ } else if(d.exists){ const rs=JSON.parse(d.data().state); if(newer(rs)) loadState(rs); else { synced=true; await save(); } toast(L(`Vítej, ${myName}! Postup je nahraný z tvého účtu.`,`Welcome, ${myName}! Progress loaded from your account.`,`Willkommen, ${myName}! Fortschritt aus deinem Konto geladen.`),'good'); }
           else { await save(); toast(L(`Vítej, ${myName}! Hra se teď ukládá k tvému Google účtu.`,`Welcome, ${myName}! The game now saves to your Google account.`,`Willkommen, ${myName}! Das Spiel speichert jetzt in deinem Google-Konto.`),'good'); } }catch(e){}
-        setSave(['Ukládá se k Google účtu','Saving to Google account','Speichert im Google-Konto'],true);
-      } else { uid=null; mode='local'; setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); } });
-  }catch(e){ setPlayer(['Hráč','Player','Spieler'],null,['Google přihlášení není dostupné','Google sign-in unavailable','Google-Anmeldung nicht verfügbar'],false); }
+        synced=true; setSave(['Ukládá se k Google účtu','Saving to Google account','Speichert im Google-Konto'],true);
+      } else { synced=true; uid=null; mode='local'; setPlayer(['Nepřihlášený hráč','Not signed in','Nicht angemeldet'],null,['Klepni a přihlas se přes Google','Tap to sign in with Google','Tippen, um dich mit Google anzumelden'],false); } });
+  }catch(e){ synced=true; setPlayer(['Hráč','Player','Spieler'],null,['Google přihlášení není dostupné','Google sign-in unavailable','Google-Anmeldung nicht verfügbar'],false); }
 }
 async function googleLogin(){
   if(!window.FIREBASE_CONFIG){ openSheet(`<span class="eyebrow">Google</span><h2>${L('Přihlášení ještě není zapnuté','Sign-in is not switched on yet','Die Anmeldung ist noch nicht eingeschaltet')}</h2>
@@ -3184,7 +3217,7 @@ setInterval(sndUpdate,100);
 // leaving the game (other app, other tab, screen off) silences it at once
 function sndPause(off){ if(!SND.ctx) return; try{ if(off) SND.ctx.suspend(); else if(SND.on) SND.ctx.resume(); }catch(e){} }
 document.addEventListener('visibilitychange',()=>{ sndPause(document.hidden); if(document.hidden && ready && !window.__TEST){ clearTimeout(saveTimer); save(); } });
-window.addEventListener('pagehide',()=>sndPause(true)); window.addEventListener('pageshow',()=>sndPause(document.hidden));
+window.addEventListener('pagehide',()=>{ sndPause(true); if(ready && !window.__TEST) saveLocal(); }); window.addEventListener('pageshow',()=>sndPause(document.hidden));
 window.addEventListener('blur',()=>sndPause(true)); window.addEventListener('focus',()=>sndPause(false));
 // --- one-shot sounds ---
 function envGain(at,peak,a,d){ const g=SND.ctx.createGain(), t=SND.ctx.currentTime+at; g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(peak,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+a+d); return g; }
