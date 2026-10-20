@@ -3537,5 +3537,7 @@ try{ if(W&&H){ renderer.compile(scene,camera); renderer.render(scene,camera); } 
 $('loading').remove();
 requestAnimationFrame(frame);
 initAccount();
+// offline cache and installing as an app on the phone both need the service worker
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
 </script>
