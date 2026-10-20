@@ -70,10 +70,12 @@ h1 span{color:var(--cherry)}
 .player small.ok{color:var(--leaf)}
 .bar{display:flex;gap:8px;align-items:center}
 .goalpill{flex:1;min-width:0;border:0;background:var(--paper);border-radius:14px;padding:6px 10px 7px;box-shadow:0 3px 0 rgba(34,48,77,.18);text-align:left;display:grid;gap:4px;color:var(--ink)}
-.goalpill .gl{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.goalpill .gl span{color:var(--muted)}
-.goalpill .gbar{display:grid;gap:2px}
-.goalpill .gbar i{display:block;height:4px;border-radius:2px;background:#ffb020;min-width:3px}
+.goalpill{grid-template-columns:1fr 1fr;column-gap:12px}
+.goalpill .gm{display:grid;gap:4px;min-width:0}
+.goalpill .gt{font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goalpill .gt b{color:var(--ink);font-family:var(--f-display);font-size:13.5px;margin-left:2px}
+.goalpill .gbar{display:block;height:7px;border-radius:4px;background:#e3eaf4;overflow:hidden}
+.goalpill .gbar i{display:block;height:100%;border-radius:4px;background:#ffb020;min-width:0;transition:width .4s}
 .goalpill .gbar i.c{background:var(--leaf)}
 .rowbtn{width:100%;border:0;background:none;padding-left:0;padding-right:0;text-align:left;cursor:pointer;color:var(--ink);font:inherit}
 .needs{display:none!important}
@@ -374,7 +376,9 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .mhead{background:linear-gradient(160deg,#ffe58a,var(--sun) 60%,#ffb020);padding:22px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;border-radius:26px 0 0 26px}
 .mhead h1{font-size:34px;line-height:.95}
 .mhead .eyebrow{color:#6b4d00}
-.mtrain{width:100%;max-width:240px;height:auto;filter:drop-shadow(0 6px 0 rgba(107,77,0,.18))}
+.mbrand{display:flex;align-items:center;gap:6px}
+.mbrand h1{margin:0}
+.mtrain{flex:1;min-width:0;width:100%;max-width:210px;height:auto;filter:drop-shadow(0 6px 0 rgba(107,77,0,.18))}
 .mbody{padding:18px 20px;display:flex;flex-direction:column;gap:9px;min-width:0}
 .mbody h2{margin:0;font-family:var(--f-display);font-size:24px}
 .mbody h3{margin:10px 0 2px;font-family:var(--f-display);font-size:15px;color:var(--muted)}
@@ -408,7 +412,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .hud .chip b.neg{color:#ffb3ad} .hud .chip b.up{color:#b9ffcf}
 .hud .chips{order:0;gap:10px}
 .hud .clockbrand{order:1}
-.hud .goalpill{order:2;flex:0 1 330px;margin-left:auto}
+.hud .goalpill{order:2;flex:0 1 400px;margin-left:auto}
 .hud #sndBtn{order:4} .hud #speed{order:5}
 .hud{right:calc(96px + env(safe-area-inset-right,0px))}
 .tools{left:auto;right:calc(8px + env(safe-area-inset-right,0px));top:calc(6px + env(safe-area-inset-top,0px));bottom:auto;max-height:calc(100% - 12px);justify-content:flex-start;width:78px}
@@ -534,88 +538,151 @@ body:not(.tut) .advisor{display:none}
 <div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
   <div class="mcard">
     <div class="mhead">
-      <svg class="mtrain" viewBox="0 0 300 220" aria-hidden="true">
+      
+      <div class="mbrand"><h1 id="menuTitle">Koleje</h1><svg class="mtrain" viewBox="0 -14 320 264" aria-hidden="true">
 <defs>
- <linearGradient id="kB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f86d9"/><stop offset=".45" stop-color="#2a56a8"/><stop offset="1" stop-color="#16306a"/></linearGradient>
- <radialGradient id="kD" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#4b5a7a"/><stop offset=".6" stop-color="#252f45"/><stop offset="1" stop-color="#121826"/></radialGradient>
- <linearGradient id="kR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7b62"/><stop offset="1" stop-color="#c42f27"/></linearGradient>
- <linearGradient id="kRd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a8231d"/><stop offset="1" stop-color="#e5483b"/></linearGradient>
- <linearGradient id="kG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".5" stop-color="#f5bd3c"/><stop offset="1" stop-color="#b9821a"/></linearGradient>
- <linearGradient id="kK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4256"/><stop offset="1" stop-color="#151a26"/></linearGradient>
- <radialGradient id="kS" cx=".38" cy=".32" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef3fa"/><stop offset="1" stop-color="#c7d3e4"/></radialGradient>
- <radialGradient id="kL" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe0"/><stop offset=".4" stop-color="#ffe066" stop-opacity=".85"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
- <linearGradient id="kF" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".3" stop-color="#fff"/></linearGradient>
- <mask id="kM"><rect width="300" height="220" fill="url(#kF)"/></mask>
+ <linearGradient id="kB" x1="0" y1="0" x2=".18" y2="1"><stop offset="0" stop-color="#2b4f9c"/><stop offset=".16" stop-color="#7fb0ff"/><stop offset=".3" stop-color="#3f73d0"/><stop offset=".75" stop-color="#1d3d82"/><stop offset="1" stop-color="#0e2152"/></linearGradient>
+ <linearGradient id="kSB" x1="0" y1="0" x2=".15" y2="1"><stop offset="0" stop-color="#2a3142"/><stop offset=".18" stop-color="#6b7790"/><stop offset=".35" stop-color="#363f55"/><stop offset="1" stop-color="#0f1420"/></linearGradient>
+ <radialGradient id="kD" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#5d6b89"/><stop offset=".55" stop-color="#2a3347"/><stop offset="1" stop-color="#10151f"/></radialGradient>
+ <linearGradient id="kR" x1="0" y1="0" x2=".2" y2="1"><stop offset="0" stop-color="#ff8f78"/><stop offset=".25" stop-color="#ef4b3b"/><stop offset="1" stop-color="#a51f19"/></linearGradient>
+ <linearGradient id="kG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1bf"/><stop offset=".45" stop-color="#f7c043"/><stop offset="1" stop-color="#a87213"/></linearGradient>
+ <linearGradient id="kK" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5a6680"/><stop offset=".35" stop-color="#2b3346"/><stop offset="1" stop-color="#121722"/></linearGradient>
+ <radialGradient id="kWh" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="#ff7a62"/><stop offset="1" stop-color="#b8261f"/></radialGradient>
+ <radialGradient id="kTire" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#5a6680"/><stop offset="1" stop-color="#151a26"/></radialGradient>
+ <radialGradient id="kS" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#ffffff"/><stop offset=".65" stop-color="#f1f5fb"/><stop offset="1" stop-color="#d3dcea"/></radialGradient>
+ <radialGradient id="kL" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe0"/><stop offset=".35" stop-color="#ffe066" stop-opacity=".9"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
+ <linearGradient id="kSil" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6fa"/><stop offset="1" stop-color="#8f9aab"/></linearGradient>
 </defs>
-<!-- ground and rails running back to the left -->
-<path d="M300 200 L0 162 L0 176 L300 216 Z" fill="#22304d" opacity=".12"/>
-<g stroke="#8a5a3b" stroke-width="7" stroke-linecap="round">
- <path d="M262 208 L276 188"/><path d="M214 202 L228 182"/><path d="M166 196 L180 176"/><path d="M118 190 L132 170"/><path d="M72 184 L86 164"/><path d="M28 178 L42 158"/>
-</g>
-<path d="M0 170 L300 208" stroke="#6f7b8c" stroke-width="5" stroke-linecap="round"/>
-<path d="M0 156 L300 190" stroke="#6f7b8c" stroke-width="4" stroke-linecap="round"/>
-<!-- speed lines behind -->
-<g stroke-linecap="round" fill="none">
- <path d="M4 92 L70 100" stroke="#fff" stroke-width="5"/><path d="M14 112 L66 118" stroke="#ffd23f" stroke-width="5"/>
- <path d="M0 132 L60 138" stroke="#7fd0ff" stroke-width="5"/><path d="M20 72 L74 80" stroke="#fff" stroke-width="3.5" opacity=".9"/>
- <path d="M8 150 L58 155" stroke="#fff" stroke-width="3" opacity=".8"/>
-</g>
-<!-- smoke billowing up and back -->
-<g>
- <circle cx="58" cy="44" r="15" fill="url(#kS)"/><circle cx="84" cy="34" r="20" fill="url(#kS)"/><circle cx="116" cy="26" r="24" fill="url(#kS)"/>
- <circle cx="152" cy="24" r="25" fill="url(#kS)"/><circle cx="184" cy="30" r="21" fill="url(#kS)"/><circle cx="202" cy="38" r="16" fill="url(#kS)"/><circle cx="214" cy="30" r="12" fill="url(#kS)"/>
- <path d="M100 40 q16 10 36 2 M140 40 q16 8 34 0" stroke="#c7d3e4" stroke-width="3" fill="none" stroke-linecap="round"/>
-</g>
-<g mask="url(#kM)">
- <!-- tender and cab -->
- <path d="M18 92 L62 98 L62 150 L18 146 Z" fill="url(#kRd)"/><path d="M18 92 L62 98 L62 104 L18 99 Z" fill="#7a1a15"/>
- <circle cx="30" cy="152" r="8" fill="#22304d"/><circle cx="52" cy="155" r="8" fill="#22304d"/>
-</g>
-<path d="M60 64 L112 70 L112 146 L60 140 Z" fill="url(#kR)"/>
-<path d="M54 58 L118 64 L118 72 L54 66 Z" fill="#2b3346"/>
-<path d="M70 76 L102 80 L102 104 L70 100 Z" fill="#ffe8a8"/><path d="M70 76 L102 80 L102 84 L70 80 Z" fill="#f5bd3c"/>
-<path d="M86 78 L86 102" stroke="#c42f27" stroke-width="3"/>
-<!-- boiler -->
-<path d="M110 66 L222 80 L222 150 L110 136 Z" fill="url(#kB)"/>
-<path d="M112 72 L220 86" stroke="#9cc2ff" stroke-width="4" opacity=".7" stroke-linecap="round"/>
-<g fill="none" stroke-width="5"><path d="M150 72 A10 33 0 0 1 150 140" stroke="url(#kG)"/><path d="M190 77 A10 34 0 0 1 190 146" stroke="url(#kG)"/></g>
-<!-- domes -->
-<path d="M140 72 q0 -16 13 -16 q13 0 13 17 z" fill="url(#kG)"/><rect x="146" y="50" width="14" height="6" rx="2" fill="url(#kG)"/>
-<path d="M174 76 q0 -12 10 -12 q10 0 10 13 z" fill="url(#kR)"/>
-<!-- running board, cylinder -->
-<path d="M100 136 L246 154 L246 162 L100 146 Z" fill="#22304d"/>
-<path d="M196 146 L236 151 L236 172 L196 167 Z" fill="url(#kK)"/><ellipse cx="236" cy="161" rx="4" ry="11" fill="#5b6680"/>
-<!-- wheels -->
-<g>
- <circle cx="128" cy="160" r="24" fill="#22304d"/><circle cx="128" cy="160" r="20" fill="url(#kR)"/><circle cx="128" cy="160" r="14" fill="none" stroke="#ffd0c5" stroke-width="2"/>
- <g stroke="#7a1a15" stroke-width="2.5"><path d="M128 141 V179"/><path d="M109 160 H147"/><path d="M115 147 L141 173"/><path d="M141 147 L115 173"/></g>
- <circle cx="176" cy="166" r="24" fill="#22304d"/><circle cx="176" cy="166" r="20" fill="url(#kR)"/><circle cx="176" cy="166" r="14" fill="none" stroke="#ffd0c5" stroke-width="2"/>
- <g stroke="#7a1a15" stroke-width="2.5"><path d="M176 147 V185"/><path d="M157 166 H195"/><path d="M163 153 L189 179"/><path d="M189 153 L163 179"/></g>
- <circle cx="218" cy="182" r="12" fill="#22304d"/><circle cx="218" cy="182" r="9" fill="url(#kR)"/>
- <path d="M134 154 L182 160 L226 162" stroke="url(#kG)" stroke-width="5" stroke-linecap="round" fill="none"/>
- <circle cx="128" cy="160" r="4" fill="url(#kG)"/><circle cx="176" cy="166" r="4" fill="url(#kG)"/><circle cx="134" cy="154" r="3" fill="#fff"/><circle cx="182" cy="160" r="3" fill="#fff"/>
-</g>
-<!-- chimney -->
-<path d="M200 82 L194 52 L230 52 L222 84 Z" fill="url(#kK)"/>
-<path d="M188 42 L236 42 L230 56 L194 56 Z" fill="url(#kR)"/><ellipse cx="212" cy="42" rx="24" ry="6" fill="#ff8a70"/><ellipse cx="212" cy="42" rx="18" ry="3.8" fill="#151a26"/>
-<!-- smokebox front -->
-<ellipse cx="232" cy="115" rx="32" ry="38" fill="#1c2436"/>
-<ellipse cx="236" cy="115" rx="28" ry="34" fill="url(#kD)"/>
-<path d="M248 92 A20 26 0 0 1 248 138" stroke="#8796b3" stroke-width="4" fill="none" stroke-linecap="round"/>
-<path d="M256 100 A12 16 0 0 1 256 130" stroke="#6e7b97" stroke-width="3.5" fill="none" stroke-linecap="round"/>
-<circle cx="238" cy="115" r="5" fill="url(#kG)"/>
-<path d="M226 96 L250 98" stroke="url(#kG)" stroke-width="3"/>
-<!-- headlamp -->
-<circle cx="242" cy="70" r="24" fill="url(#kL)"/>
-<path d="M232 62 L252 64 L252 80 L232 78 Z" fill="#2b3346"/><ellipse cx="248" cy="71" rx="4" ry="6" fill="#fff6c8"/><path d="M230 60 L254 62 L250 57 L234 55 Z" fill="url(#kR)"/>
-<!-- buffer beam and cowcatcher -->
-<path d="M206 150 L278 160 L278 172 L206 162 Z" fill="url(#kR)"/>
-<g fill="#c9ced6" stroke="#22304d" stroke-width="2"><ellipse cx="214" cy="158" rx="4" ry="6"/><ellipse cx="272" cy="166" rx="4.5" ry="6.5"/></g>
-<path d="M208 162 L280 172 L262 204 L214 190 Z" fill="url(#kR)"/>
-<g stroke="#7a1a15" stroke-width="3" stroke-linecap="round"><path d="M222 165 L226 192"/><path d="M234 167 L237 196"/><path d="M246 169 L248 199"/><path d="M258 170 L258 201"/><path d="M270 172 L266 198"/></g>
-<path d="M208 162 L280 172" stroke="#ffb3a6" stroke-width="2"/>
-</svg>
-      <h1 id="menuTitle">Koleje</h1>
+<path d="M20 160 L300 250 L250 250 L0 172 Z" fill="#22304d" opacity=".14"/>
+<path d="M22 156 L44 136" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M58 172 L80 152" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M94 188 L116 168" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M130 205 L152 185" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M166 221 L188 201" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M202 238 L224 218" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M238 254 L260 234" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M274 270 L296 250" stroke="#7b4f33" stroke-width="8" stroke-linecap="round"/>
+<path d="M0 154 L320 300" stroke="#5f6b7c" stroke-width="6"/><path d="M0 154 L320 300" stroke="#c3cad4" stroke-width="2"/>
+<path d="M24 136 L320 271" stroke="#5f6b7c" stroke-width="5"/><path d="M24 136 L320 271" stroke="#c3cad4" stroke-width="1.6"/>
+<path d="M0 62 L46 74" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
+<path d="M4 90 L50 102" stroke="#ffd23f" stroke-width="5" stroke-linecap="round"/>
+<path d="M0 116 L44 127" stroke="#7fd0ff" stroke-width="5" stroke-linecap="round"/>
+<path d="M10 140 L48 150" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+<path d="M16 40 L60 52" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+<circle cx="53.3" cy="59.5" r="11" fill="#b9c6da"/>
+<circle cx="52" cy="58" r="11" fill="url(#kS)"/>
+<circle cx="71.9" cy="48.2" r="16" fill="#b9c6da"/>
+<circle cx="70" cy="46" r="16" fill="url(#kS)"/>
+<circle cx="100.6" cy="37.1" r="22" fill="#b9c6da"/>
+<circle cx="98" cy="34" r="22" fill="url(#kS)"/>
+<circle cx="135.0" cy="29.5" r="25" fill="#b9c6da"/>
+<circle cx="132" cy="26" r="25" fill="url(#kS)"/>
+<circle cx="170.8" cy="27.2" r="23" fill="#b9c6da"/>
+<circle cx="168" cy="24" r="23" fill="url(#kS)"/>
+<circle cx="198.0" cy="32.4" r="17" fill="#b9c6da"/>
+<circle cx="196" cy="30" r="17" fill="url(#kS)"/>
+<circle cx="215.3" cy="41.5" r="11" fill="#b9c6da"/>
+<circle cx="214" cy="40" r="11" fill="url(#kS)"/>
+<ellipse cx="100" cy="152" rx="15" ry="22" fill="#0f1420"/>
+<ellipse cx="98" cy="150" rx="15" ry="22" fill="url(#kTire)"/>
+<ellipse cx="98" cy="150" rx="12.0" ry="17.6" fill="url(#kWh)"/>
+<path d="M98 150 L109.7 150.0" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L106.3 162.1" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L98.0 167.2" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L89.7 162.1" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L86.3 150.0" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L89.7 137.9" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L98.0 132.8" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M98 150 L106.3 137.9" stroke="#7a1a15" stroke-width="1.5" stroke-linecap="round"/>
+<path d="M88.7 157.9 A10.8 15.8 0 0 0 107.3 157.9 Z" fill="#7a1a15" opacity=".85"/>
+<ellipse cx="98" cy="150" rx="3.0" ry="4.4" fill="url(#kG)"/>
+<ellipse cx="94.2" cy="139.0" rx="7.5" ry="4.0" fill="#fff" opacity=".18"/>
+<path d="M48 44 L100 50 L100 140 L48 132 Z" fill="url(#kR)"/>
+<path d="M42 36 L106 43 L108 52 L44 45 Z" fill="#232a3a"/><path d="M42 36 L106 43 L104 38 L46 31 Z" fill="#3b4459"/>
+<path d="M57 58 L91 62 L91 90 L57 86 Z" fill="#232a3a"/><path d="M60 61 L88 64.5 L88 87 L60 83.5 Z" fill="#ffe7a1"/><path d="M60 61 L88 64.5 L88 70 L60 66.5 Z" fill="#fff6d6"/>
+<path d="M74 63 L74 86" stroke="#232a3a" stroke-width="3"/><path d="M50 108 L98 114" stroke="#f7c043" stroke-width="3"/>
+<path d="M96 62 L232 84 L232 172 L96 122 Z" fill="url(#kB)"/>
+<path d="M130 67.5 Q121 101.0 130 134.5" stroke="url(#kG)" stroke-width="5" fill="none"/>
+<path d="M170 74.0 Q161 111.6 170 149.2" stroke="url(#kG)" stroke-width="5" fill="none"/>
+<path d="M206 80 L232 84 L232 172 L206 162 Z" fill="url(#kSB)"/>
+<path d="M147 74.4 Q147 56.2 160 56.2 Q173 56.2 173 75.4 Z" fill="url(#kG)"/>
+<path d="M116 68.7 Q116 56.1 125 56.1 Q134 56.1 134 69.7 Z" fill="url(#kR)"/>
+<ellipse cx="160" cy="55.4" rx="5" ry="2.4" fill="#fff1bf"/>
+<path d="M60 128 L246 182 L246 190 L60 136 Z" fill="#7a1a15"/><path d="M60 128 L246 182" stroke="#ff8f78" stroke-width="1.5"/>
+<ellipse cx="138" cy="170" rx="17" ry="25" fill="#0f1420"/>
+<ellipse cx="136" cy="168" rx="17" ry="25" fill="url(#kTire)"/>
+<ellipse cx="136" cy="168" rx="13.6" ry="20.0" fill="url(#kWh)"/>
+<path d="M136 168 L149.3 168.0" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L146.7 179.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L140.1 186.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L131.9 186.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L125.3 179.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L122.7 168.0" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L125.3 156.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L131.9 149.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L140.1 149.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M136 168 L146.7 156.5" stroke="#7a1a15" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M125.5 177.0 A12.2 18.0 0 0 0 146.5 177.0 Z" fill="#7a1a15" opacity=".85"/>
+<ellipse cx="136" cy="168" rx="3.4" ry="5.0" fill="url(#kG)"/>
+<ellipse cx="131.8" cy="155.5" rx="8.5" ry="4.5" fill="#fff" opacity=".18"/>
+<ellipse cx="188" cy="192" rx="20" ry="29" fill="#0f1420"/>
+<ellipse cx="186" cy="190" rx="20" ry="29" fill="url(#kTire)"/>
+<ellipse cx="186" cy="190" rx="16.0" ry="23.2" fill="url(#kWh)"/>
+<path d="M186 190 L201.6 190.0" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L198.6 203.3" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L190.8 211.5" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L181.2 211.5" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L173.4 203.3" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L170.4 190.0" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L173.4 176.7" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L181.2 168.5" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L190.8 168.5" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M186 190 L198.6 176.7" stroke="#7a1a15" stroke-width="2.0" stroke-linecap="round"/>
+<path d="M173.6 200.4 A14.4 20.9 0 0 0 198.4 200.4 Z" fill="#7a1a15" opacity=".85"/>
+<ellipse cx="186" cy="190" rx="4.0" ry="5.8" fill="url(#kG)"/>
+<ellipse cx="181.0" cy="175.5" rx="10.0" ry="5.2" fill="#fff" opacity=".18"/>
+<ellipse cx="234" cy="214" rx="10" ry="14" fill="#0f1420"/>
+<ellipse cx="232" cy="212" rx="10" ry="14" fill="url(#kTire)"/>
+<ellipse cx="232" cy="212" rx="8.0" ry="11.2" fill="url(#kWh)"/>
+<path d="M232 212 L239.8 212.0" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M232 212 L235.9 221.5" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M232 212 L228.1 221.5" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M232 212 L224.2 212.0" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M232 212 L228.1 202.5" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M232 212 L235.9 202.5" stroke="#7a1a15" stroke-width="1.4" stroke-linecap="round"/>
+<path d="M225.8 217.0 A7.2 10.1 0 0 0 238.2 217.0 Z" fill="#7a1a15" opacity=".85"/>
+<ellipse cx="232" cy="212" rx="2.0" ry="2.8" fill="url(#kG)"/>
+<ellipse cx="229.5" cy="205.0" rx="5.0" ry="2.5" fill="#fff" opacity=".18"/>
+<path d="M98 156 L136 175 L186 198" stroke="url(#kSil)" stroke-width="5" stroke-linecap="round" fill="none"/>
+<path d="M186 198 L226 186" stroke="url(#kSil)" stroke-width="4" stroke-linecap="round"/>
+<circle cx="98" cy="156" r="3.2" fill="#fff"/>
+<circle cx="136" cy="175" r="3.2" fill="#fff"/>
+<circle cx="186" cy="198" r="3.2" fill="#fff"/>
+<path d="M206 166 L242 176 L242 196 L206 186 Z" fill="url(#kK)"/><ellipse cx="242" cy="186" rx="5" ry="10" fill="#7b879d"/><ellipse cx="242" cy="186" rx="2.5" ry="5" fill="#2b3346"/>
+<path d="M206 88 L201 60 L227 60 L222 92 Z" fill="url(#kK)"/>
+<path d="M192 46 L236 46 L228 62 L200 62 Z" fill="url(#kR)"/><ellipse cx="214" cy="46" rx="22" ry="7" fill="#ff9e88"/><ellipse cx="214" cy="46" rx="17" ry="4.5" fill="#10151f"/>
+<path d="M200 62 L228 62" stroke="#f7c043" stroke-width="3"/>
+<ellipse cx="236" cy="128" rx="36" ry="46" fill="#151a26"/>
+<ellipse cx="240" cy="128" rx="32" ry="42" fill="#3b4459"/>
+<ellipse cx="242" cy="128" rx="27" ry="36" fill="url(#kD)"/>
+<path d="M256 101 A20 28 0 0 1 256 155" stroke="#8c9ab5" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M262 110 A12 18 0 0 1 262 146" stroke="#6f7c97" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+<path d="M226 104 A20 28 0 0 0 226 152" stroke="#0c1018" stroke-width="3" fill="none" opacity=".6"/>
+<ellipse cx="244" cy="128" rx="6" ry="7" fill="url(#kG)"/><path d="M244 128 L266 124 M244 128 L262 138" stroke="url(#kSil)" stroke-width="3" stroke-linecap="round"/>
+<path d="M226 100 Q242 94 258 100" stroke="url(#kG)" stroke-width="3" fill="none"/>
+<circle cx="250" cy="74" r="30" fill="url(#kL)"/>
+<path d="M236 66 L258 68 L258 86 L236 84 Z" fill="#2b3346"/><path d="M234 64 L260 66 L256 60 L238 58 Z" fill="url(#kR)"/><ellipse cx="253" cy="76" rx="4.5" ry="7" fill="#fff8cf"/>
+<path d="M204 184 L276 196 L276 210 L204 198 Z" fill="url(#kR)"/>
+<g fill="url(#kSil)" stroke="#22304d" stroke-width="2"><ellipse cx="212" cy="196" rx="4.5" ry="7"/><ellipse cx="270" cy="206" rx="5" ry="7.5"/></g>
+<path d="M208 198 L280 210 L262 244 L216 232 Z" fill="url(#kR)"/>
+<path d="M214 199 L222.0 233.0" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M227 201 L230.4 234.8" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M240 203 L238.8 236.6" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M253 205 L247.2 238.4" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M266 207 L255.6 240.2" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M279 209 L264.0 242.0" stroke="#7a1a15" stroke-width="3" stroke-linecap="round"/>
+<path d="M208 198 L280 210" stroke="#ffc2b6" stroke-width="2"/>
+</svg></div>
       <p class="eyebrow" id="menuSub"></p>
     </div>
     <div class="mbody" id="menuBody"></div>
@@ -2847,8 +2914,10 @@ function goalCard(){ const r=Math.max(0,curRate), cd=citiesDone(), n=consumers.l
   return `<article class="city goal"><header><h3>${L('Cíl levelu','Level goal','Levelziel')}</h3><span class="stars ${won?'ok':''}">${won?L('splněno','done','geschafft'):L('za minutu','per minute','pro Minute')}</span></header><div class="needlist">`+
     `<div class="need"><i style="background:#ffb020"></i><span>${L('Obrat','Income','Umsatz')}</span><b>${goalHit?'✓':num(r)+'/'+num(GOAL_RATE)}</b><span class="track"><span class="fill" style="width:${goalHit?100:Math.min(100,r/GOAL_RATE*100)}%;background:#ffb020"></span></span></div>`+
     `<div class="need"><i style="background:#3dbb6b"></i><span>${L('Města','Cities','Städte')}</span><b>${cd}/${n}</b><span class="track"><span class="fill" style="width:${cd/n*100}%;background:#3dbb6b"></span></span></div></div></article>`; }
+// the level goal at a glance: two plainly labelled meters, each with its own bar
 function goalPill(){ const r=Math.max(0,curRate), cd=citiesDone(), n=consumers.length, f=goalHit?1:Math.min(1,r/GOAL_RATE);
-  $('goalPill').innerHTML=`<span class="gl"><span>${L('Cíl','Goal','Ziel')}</span> <b>${goalHit?'✓':num(r)+'/'+num(GOAL_RATE)}</b>${L(' za min',' /min',' /Min')} · <b>${cd}/${n}</b> ${L('měst','cities','Städte')}</span><span class="gbar"><i style="width:${f*100}%"></i><i class="c" style="width:${cd/n*100}%"></i></span>`; }
+  $('goalPill').innerHTML=`<span class="gm"><span class="gt">🏙️ ${L('Města','Cities','Städte')} <b>${cd}/${n}</b></span><span class="gbar"><i class="c" style="width:${cd/n*100}%"></i></span></span>`+
+    `<span class="gm"><span class="gt">💰 ${L('Výdělek/min','Earnings/min','Verdienst/Min')} <b>${goalHit?'✓':num(r)+' / '+num(GOAL_RATE)}</b></span><span class="gbar"><i style="width:${f*100}%"></i></span></span>`; }
 function goalSheet(){
   let h=`<span class="eyebrow">${L('Level 1 · Česko','Level 1 · Czechia','Level 1 · Tschechien')}</span><h2>${L('Cíl levelu','Level goal','Levelziel')}</h2>
   <p>${L(`Všechna města na úrovni 3/3 a obrat aspoň ${fmtK(GOAL_RATE)} za minutu.`,`Every city at level 3/3 and income of at least ${fmtK(GOAL_RATE)} per minute.`,`Alle Städte auf Stufe 3/3 und ein Umsatz von mindestens ${fmtK(GOAL_RATE)} pro Minute.`)}</p>
@@ -3355,7 +3424,12 @@ function setLang(l){
 }
 /* ================= main menu ================= */
 const menuEl=$('menu'), menuBody=$('menuBody'); let menuView='main', menuStarted=false;
-let fsWanted=false; try{ fsWanted=localStorage.getItem('zi-fs2')==='1'; }catch(e){}   // off by default: in full screen Android hides the system bars and the user cannot get out of the game easily
+let fsWanted=true; try{ fsWanted=localStorage.getItem('zi-fs3')!=='0'; }catch(e){}
+// Full screen hides the phone's system bars. Swiping in from an edge to get them back leaves full screen for a while,
+// so the bars stay up long enough to use; the next tap in the game after that goes back to full screen.
+let fsPauseUntil=0;
+window.addEventListener('pointerdown',e=>{ if(!document.fullscreenElement) return; const m=24; if(e.clientY>=innerHeight-m || e.clientY<=m*0.7 || e.clientX<=m*0.6 || e.clientX>=innerWidth-m*0.6){ fsPauseUntil=performance.now()+12000; document.exitFullscreen().catch(()=>{}); } },true);
+cv.addEventListener('pointerdown',()=>{ if(fsWanted && menuStarted && !document.fullscreenElement && performance.now()>fsPauseUntil) goFullscreen(); });
 const hasProgress=()=>trains.length>0 || [...edges.values()].some(e=>!e.internal);
 function goFullscreen(){ const el=document.documentElement; if(!fsWanted || document.fullscreenElement || !el.requestFullscreen) return lockLand();
   el.requestFullscreen({navigationUI:'hide'}).then(lockLand).catch(()=>{}); }
@@ -3460,7 +3534,7 @@ menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) 
   else if(m==='install'){ if(installEvt){ const ev=installEvt; installEvt=null; ev.prompt(); ev.userChoice.then(c=>{ if(c.outcome!=='accepted'){ installEvt=ev; } renderMenu(); }).catch(()=>{}); } else { menuView='install'; renderMenu(); } }
   else if(m==='copylink'){ const done=()=>toast(L('Odkaz je zkopírovaný. Vlož ho do Chromu.','Link copied. Paste it into Chrome.','Link kopiert. Füge ihn in Chrome ein.'),'good'); try{ navigator.clipboard.writeText(GAME_URL).then(done,()=>prompt('',GAME_URL)); }catch(e){ prompt('',GAME_URL); } }
   else if(m==='snd') $('sndBtn').click();
-  else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs2',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
+  else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs3',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
   else if(m==='zoom0'||m==='zoom1'){ zoomInvert=m==='zoom1'; try{ localStorage.setItem('zi-zoom2',zoomInvert?'1':'0'); }catch(e){} renderMenu(); }
   else if(m==='plans'||m==='levels'){ closeMenu(); menuStarted=true; showTab(m); }
   else { menuView=m; renderMenu(); } });
