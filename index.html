@@ -3345,7 +3345,8 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
   else if(menuView==='resetconfirm'){ h=`${backBtn()}<h2>${L('Resetovat hru?','Reset the game?','Spiel zurücksetzen?')}</h2><p>${L('Smažou se všechny tratě, vlaky, peníze i skóre a level začne znovu. Nejde to vrátit.','All lines, trains, coins and score are deleted and the level starts over. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht und das Level beginnt neu. Das lässt sich nicht rückgängig machen.')}</p>`+mb('resetgo','↺',L('Ano, resetovat','Yes, reset','Ja, zurücksetzen'),'','danger')+mb('settings','←',L('Ne, zpět','No, go back','Nein, zurück')); }
   if(h!==menuBody._h){ menuBody._h=h; menuBody.innerHTML=h; } }
 // installing as an app: Chrome offers it through this event once the page qualifies
-const GAME_URL='https://ja-barista.github.io/zeleznicni-inzenyr/';
+// the game's own address, so the link stays right when the repository (and so the web address) is renamed
+const GAME_URL=/github\.io$/.test(location.hostname) ? location.origin+location.pathname.replace(/index\.html$/,'') : 'https://ja-barista.github.io/koleje/';
 let installEvt=null;
 addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installEvt=e; renderMenu(); });
 addEventListener('appinstalled',()=>{ installEvt=null; toast(L('Hra je nainstalovaná – najdeš ji na ploše.','The game is installed – find it on your home screen.','Das Spiel ist installiert – du findest es auf dem Startbildschirm.'),'good',5000); renderMenu(); });
