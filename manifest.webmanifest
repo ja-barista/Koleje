@@ -2,17 +2,15 @@
   "name": "Koleje",
   "short_name": "Koleje",
   "description": "Postav železnici napříč Českem a dovez městům, co potřebují.",
-  "lang": "cs",
-  "id": "koleje-hra",
-  "start_url": "./?app=koleje",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",
   "background_color": "#a8e0ff",
   "theme_color": "#7cc9f5",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
