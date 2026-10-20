@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>Železniční inženýr</title>
+<title>Koleje</title>
 <meta name="theme-color" content="#7cc9f5">
 <meta name="description" content="Postav železnici napříč Českem a dovez městům, co potřebují.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -12,7 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Žel. inženýr">
+<meta name="apple-mobile-web-app-title" content="Koleje">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} img{max-width:100%} body{-webkit-user-select:none;user-select:none;overscroll-behavior:none}</style>
 <script src="config.js"></script>
 </head>
@@ -118,6 +118,9 @@ details.more summary{cursor:pointer;font-weight:800;font-size:13px;color:var(--b
 .wsvg .smoke circle:nth-child(2){animation-delay:.6s}.wsvg .smoke circle:nth-child(3){animation-delay:1.2s}
 @keyframes puff{0%{opacity:.9;transform:translate(0,0) scale(.6)}100%{opacity:0;transform:translate(-30px,-6px) scale(2.2)}}
 .addgrid2{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;margin:6px 0}
+.wcarousel{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;padding:4px 2px 10px;-webkit-overflow-scrolling:touch}
+.wcarousel .addw2{flex:0 0 132px;scroll-snap-align:start}
+.wcarousel::-webkit-scrollbar{height:6px} .wcarousel::-webkit-scrollbar-thumb{background:#c9d6e6;border-radius:3px}
 .addw2{border:0;border-radius:14px;padding:8px 10px 9px;background:var(--paper-2);text-align:left;display:grid;justify-items:center;gap:2px;box-shadow:0 3px 0 var(--line);color:var(--ink);min-width:0}
 .addw2.fit{background:#e7f8ec;box-shadow:0 3px 0 #b8e6c6}
 .addw2 span{display:grid;justify-items:center;text-align:center}
@@ -136,6 +139,14 @@ details.more summary{cursor:pointer;font-weight:800;font-size:13px;color:var(--b
 .stars{font-family:var(--f-display);font-weight:700;font-size:12px;padding:2px 9px;border-radius:99px;background:var(--sun);color:var(--ink);white-space:nowrap}
 .stars.ok{background:var(--leaf);color:#fff}
 .needlist{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}
+.ctiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:5px}
+.ctile{display:grid;justify-items:center;align-content:start;text-align:center;gap:2px;background:#fff;border-radius:12px;padding:6px 4px 5px;font-size:12px;font-weight:700;line-height:1.15}
+.ctile i{font-style:normal;font-size:24px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;border:2px solid;margin-bottom:2px}
+.ctile small{color:var(--muted);font-size:11px}
+.ctile .track{width:100%;height:5px;background:#dfe7f2;border-radius:4px;overflow:hidden;margin-top:2px}
+.ctile .fill{display:block;height:100%;border-radius:4px}
+.factbtn{margin:2px 0 6px}
+.fact{margin:0 0 8px;font-weight:600;line-height:1.45;font-size:13.5px;background:#fff7d6;border-radius:14px;padding:10px 12px}
 .need{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:3px 6px;font-size:12.5px;font-weight:700;min-width:0}
 .need i{width:10px;height:10px;border-radius:50%;box-shadow:inset 0 -2px 0 rgba(0,0,0,.15)}
 .need span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -363,7 +374,7 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .mhead{background:linear-gradient(160deg,#ffe58a,var(--sun) 60%,#ffb020);padding:22px 20px;display:flex;flex-direction:column;justify-content:center;gap:6px;border-radius:26px 0 0 26px}
 .mhead h1{font-size:34px;line-height:.95}
 .mhead .eyebrow{color:#6b4d00}
-.mtrain{width:100%;max-width:200px;height:auto}
+.mtrain{width:100%;max-width:240px;height:auto;filter:drop-shadow(0 6px 0 rgba(107,77,0,.18))}
 .mbody{padding:18px 20px;display:flex;flex-direction:column;gap:9px;min-width:0}
 .mbody h2{margin:0;font-family:var(--f-display);font-size:24px}
 .mbody h3{margin:10px 0 2px;font-family:var(--f-display);font-size:15px;color:var(--muted)}
@@ -378,8 +389,6 @@ canvas{display:block;width:100%;height:100%;touch-action:none}
 .mbtn.danger{background:#ffe3e1;box-shadow:0 4px 0 #f3b3ae;color:#b3261e}
 .mrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .mback{align-self:flex-start}
-.mfoot{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px;font-weight:700;margin-top:4px}
-.mfoot img{width:24px;height:24px;border-radius:50%}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--paper-2);border-radius:14px;padding:9px 12px;font-weight:700}
 .toggle input[type=range]{flex:1;max-width:220px;accent-color:var(--berry)}
 .sw{border:0;border-radius:99px;width:54px;height:30px;background:#c9d6e6;position:relative;flex-shrink:0;padding:0}
@@ -525,8 +534,88 @@ body:not(.tut) .advisor{display:none}
 <div class="menu" id="menu" role="dialog" aria-modal="true" aria-labelledby="menuTitle" hidden>
   <div class="mcard">
     <div class="mhead">
-      <svg class="mtrain" viewBox="0 0 120 56" aria-hidden="true"><rect x="2" y="48" width="116" height="4" rx="2" fill="#8a5a3b"/><rect x="6" y="14" width="56" height="28" rx="7" fill="#ff5a4f"/><rect x="12" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="28" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="44" y="20" width="12" height="10" rx="2" fill="#bfe6ff"/><rect x="66" y="18" width="48" height="24" rx="6" fill="#7b6cff"/><rect x="72" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><rect x="86" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><rect x="100" y="23" width="10" height="8" rx="2" fill="#bfe6ff"/><circle cx="18" cy="45" r="5" fill="#22304d"/><circle cx="50" cy="45" r="5" fill="#22304d"/><circle cx="78" cy="45" r="5" fill="#22304d"/><circle cx="104" cy="45" r="5" fill="#22304d"/><rect x="10" y="8" width="40" height="5" rx="2.5" fill="#22304d"/></svg>
-      <h1 id="menuTitle">Železniční <span>inženýr</span></h1>
+      <svg class="mtrain" viewBox="0 0 300 220" aria-hidden="true">
+<defs>
+ <linearGradient id="kB" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f86d9"/><stop offset=".45" stop-color="#2a56a8"/><stop offset="1" stop-color="#16306a"/></linearGradient>
+ <radialGradient id="kD" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#4b5a7a"/><stop offset=".6" stop-color="#252f45"/><stop offset="1" stop-color="#121826"/></radialGradient>
+ <linearGradient id="kR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7b62"/><stop offset="1" stop-color="#c42f27"/></linearGradient>
+ <linearGradient id="kRd" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a8231d"/><stop offset="1" stop-color="#e5483b"/></linearGradient>
+ <linearGradient id="kG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffe9a8"/><stop offset=".5" stop-color="#f5bd3c"/><stop offset="1" stop-color="#b9821a"/></linearGradient>
+ <linearGradient id="kK" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a4256"/><stop offset="1" stop-color="#151a26"/></linearGradient>
+ <radialGradient id="kS" cx=".38" cy=".32" r=".7"><stop offset="0" stop-color="#ffffff"/><stop offset=".7" stop-color="#eef3fa"/><stop offset="1" stop-color="#c7d3e4"/></radialGradient>
+ <radialGradient id="kL" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#fffbe0"/><stop offset=".4" stop-color="#ffe066" stop-opacity=".85"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
+ <linearGradient id="kF" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".3" stop-color="#fff"/></linearGradient>
+ <mask id="kM"><rect width="300" height="220" fill="url(#kF)"/></mask>
+</defs>
+<!-- ground and rails running back to the left -->
+<path d="M300 200 L0 162 L0 176 L300 216 Z" fill="#22304d" opacity=".12"/>
+<g stroke="#8a5a3b" stroke-width="7" stroke-linecap="round">
+ <path d="M262 208 L276 188"/><path d="M214 202 L228 182"/><path d="M166 196 L180 176"/><path d="M118 190 L132 170"/><path d="M72 184 L86 164"/><path d="M28 178 L42 158"/>
+</g>
+<path d="M0 170 L300 208" stroke="#6f7b8c" stroke-width="5" stroke-linecap="round"/>
+<path d="M0 156 L300 190" stroke="#6f7b8c" stroke-width="4" stroke-linecap="round"/>
+<!-- speed lines behind -->
+<g stroke-linecap="round" fill="none">
+ <path d="M4 92 L70 100" stroke="#fff" stroke-width="5"/><path d="M14 112 L66 118" stroke="#ffd23f" stroke-width="5"/>
+ <path d="M0 132 L60 138" stroke="#7fd0ff" stroke-width="5"/><path d="M20 72 L74 80" stroke="#fff" stroke-width="3.5" opacity=".9"/>
+ <path d="M8 150 L58 155" stroke="#fff" stroke-width="3" opacity=".8"/>
+</g>
+<!-- smoke billowing up and back -->
+<g>
+ <circle cx="58" cy="44" r="15" fill="url(#kS)"/><circle cx="84" cy="34" r="20" fill="url(#kS)"/><circle cx="116" cy="26" r="24" fill="url(#kS)"/>
+ <circle cx="152" cy="24" r="25" fill="url(#kS)"/><circle cx="184" cy="30" r="21" fill="url(#kS)"/><circle cx="202" cy="38" r="16" fill="url(#kS)"/><circle cx="214" cy="30" r="12" fill="url(#kS)"/>
+ <path d="M100 40 q16 10 36 2 M140 40 q16 8 34 0" stroke="#c7d3e4" stroke-width="3" fill="none" stroke-linecap="round"/>
+</g>
+<g mask="url(#kM)">
+ <!-- tender and cab -->
+ <path d="M18 92 L62 98 L62 150 L18 146 Z" fill="url(#kRd)"/><path d="M18 92 L62 98 L62 104 L18 99 Z" fill="#7a1a15"/>
+ <circle cx="30" cy="152" r="8" fill="#22304d"/><circle cx="52" cy="155" r="8" fill="#22304d"/>
+</g>
+<path d="M60 64 L112 70 L112 146 L60 140 Z" fill="url(#kR)"/>
+<path d="M54 58 L118 64 L118 72 L54 66 Z" fill="#2b3346"/>
+<path d="M70 76 L102 80 L102 104 L70 100 Z" fill="#ffe8a8"/><path d="M70 76 L102 80 L102 84 L70 80 Z" fill="#f5bd3c"/>
+<path d="M86 78 L86 102" stroke="#c42f27" stroke-width="3"/>
+<!-- boiler -->
+<path d="M110 66 L222 80 L222 150 L110 136 Z" fill="url(#kB)"/>
+<path d="M112 72 L220 86" stroke="#9cc2ff" stroke-width="4" opacity=".7" stroke-linecap="round"/>
+<g fill="none" stroke-width="5"><path d="M150 72 A10 33 0 0 1 150 140" stroke="url(#kG)"/><path d="M190 77 A10 34 0 0 1 190 146" stroke="url(#kG)"/></g>
+<!-- domes -->
+<path d="M140 72 q0 -16 13 -16 q13 0 13 17 z" fill="url(#kG)"/><rect x="146" y="50" width="14" height="6" rx="2" fill="url(#kG)"/>
+<path d="M174 76 q0 -12 10 -12 q10 0 10 13 z" fill="url(#kR)"/>
+<!-- running board, cylinder -->
+<path d="M100 136 L246 154 L246 162 L100 146 Z" fill="#22304d"/>
+<path d="M196 146 L236 151 L236 172 L196 167 Z" fill="url(#kK)"/><ellipse cx="236" cy="161" rx="4" ry="11" fill="#5b6680"/>
+<!-- wheels -->
+<g>
+ <circle cx="128" cy="160" r="24" fill="#22304d"/><circle cx="128" cy="160" r="20" fill="url(#kR)"/><circle cx="128" cy="160" r="14" fill="none" stroke="#ffd0c5" stroke-width="2"/>
+ <g stroke="#7a1a15" stroke-width="2.5"><path d="M128 141 V179"/><path d="M109 160 H147"/><path d="M115 147 L141 173"/><path d="M141 147 L115 173"/></g>
+ <circle cx="176" cy="166" r="24" fill="#22304d"/><circle cx="176" cy="166" r="20" fill="url(#kR)"/><circle cx="176" cy="166" r="14" fill="none" stroke="#ffd0c5" stroke-width="2"/>
+ <g stroke="#7a1a15" stroke-width="2.5"><path d="M176 147 V185"/><path d="M157 166 H195"/><path d="M163 153 L189 179"/><path d="M189 153 L163 179"/></g>
+ <circle cx="218" cy="182" r="12" fill="#22304d"/><circle cx="218" cy="182" r="9" fill="url(#kR)"/>
+ <path d="M134 154 L182 160 L226 162" stroke="url(#kG)" stroke-width="5" stroke-linecap="round" fill="none"/>
+ <circle cx="128" cy="160" r="4" fill="url(#kG)"/><circle cx="176" cy="166" r="4" fill="url(#kG)"/><circle cx="134" cy="154" r="3" fill="#fff"/><circle cx="182" cy="160" r="3" fill="#fff"/>
+</g>
+<!-- chimney -->
+<path d="M200 82 L194 52 L230 52 L222 84 Z" fill="url(#kK)"/>
+<path d="M188 42 L236 42 L230 56 L194 56 Z" fill="url(#kR)"/><ellipse cx="212" cy="42" rx="24" ry="6" fill="#ff8a70"/><ellipse cx="212" cy="42" rx="18" ry="3.8" fill="#151a26"/>
+<!-- smokebox front -->
+<ellipse cx="232" cy="115" rx="32" ry="38" fill="#1c2436"/>
+<ellipse cx="236" cy="115" rx="28" ry="34" fill="url(#kD)"/>
+<path d="M248 92 A20 26 0 0 1 248 138" stroke="#8796b3" stroke-width="4" fill="none" stroke-linecap="round"/>
+<path d="M256 100 A12 16 0 0 1 256 130" stroke="#6e7b97" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+<circle cx="238" cy="115" r="5" fill="url(#kG)"/>
+<path d="M226 96 L250 98" stroke="url(#kG)" stroke-width="3"/>
+<!-- headlamp -->
+<circle cx="242" cy="70" r="24" fill="url(#kL)"/>
+<path d="M232 62 L252 64 L252 80 L232 78 Z" fill="#2b3346"/><ellipse cx="248" cy="71" rx="4" ry="6" fill="#fff6c8"/><path d="M230 60 L254 62 L250 57 L234 55 Z" fill="url(#kR)"/>
+<!-- buffer beam and cowcatcher -->
+<path d="M206 150 L278 160 L278 172 L206 162 Z" fill="url(#kR)"/>
+<g fill="#c9ced6" stroke="#22304d" stroke-width="2"><ellipse cx="214" cy="158" rx="4" ry="6"/><ellipse cx="272" cy="166" rx="4.5" ry="6.5"/></g>
+<path d="M208 162 L280 172 L262 204 L214 190 Z" fill="url(#kR)"/>
+<g stroke="#7a1a15" stroke-width="3" stroke-linecap="round"><path d="M222 165 L226 192"/><path d="M234 167 L237 196"/><path d="M246 169 L248 199"/><path d="M258 170 L258 201"/><path d="M270 172 L266 198"/></g>
+<path d="M208 162 L280 172" stroke="#ffb3a6" stroke-width="2"/>
+</svg>
+      <h1 id="menuTitle">Koleje</h1>
       <p class="eyebrow" id="menuSub"></p>
     </div>
     <div class="mbody" id="menuBody"></div>
@@ -554,7 +643,6 @@ const num=n=>Math.round(n).toLocaleString(LOCALE());
 const COIN=()=>L('mincí','coins','Münzen');
 const lc=s=> LANG==='de' ? s : s.toLowerCase();
 const STATIC_TEXT={
-  t1:['Železniční','Railway','Eisenbahn-'], t2:['inženýr','Engineer','Ingenieur'],
   score:['Skóre','Score','Punkte'], coins:['Mince','Coins','Münzen'],
   tabGame:['Hra','Game','Spiel'], tabPlans:['Řády','Timetables','Fahrpläne'], tabLevels:['Levely','Levels','Level'],
   loading:['Stavím krajinu…','Building the landscape…','Landschaft wird gebaut…'], undo:['Zpět','Undo','Zurück'],
@@ -973,7 +1061,7 @@ const SITES = [
   {id:'telc', name:'Telč', ll:[15.45,49.18], kind:'city', tourist:true, size:5, plat:1, prod:{obili:45},
     desc:['Renesanční náměstí a zámek na Vysočině. Okolní statky posílají obilí. Chce turisty a pivo.','Renaissance square and chateau in the Highlands. Farms around it send grain. Wants tourists and beer.','Renaissance-Platz und Schloss im Hochland. Die Höfe ringsum schicken Getreide. Will Touristen und Bier.'],
     levels:[{turiste:2},{turiste:4,posta:2},{turiste:6,pivo:2}]},
-  {id:'letiste', name:'Letiště Praha', ll:[14.23,50.12], kind:'airport', plat:2, prod:{turiste:18}, exports:['auta','pivo','vino','sklo','chmel','ocel'],
+  {id:'letiste', name:'Letiště Praha', ll:[14.11,50.14], kind:'airport', plat:2, prod:{turiste:18}, exports:['auta','pivo','vino','sklo','chmel','ocel'],
     desc:['Letiště Václava Havla. Odsud letí české výrobky do světa: auta, pivo, víno, sklo, chmel a ocel. Za vývoz platí o 30 % víc. Přilétají sem turisté.','Václav Havel Airport. Czech products fly out to the world from here: cars, beer, wine, glass, hops and steel. Exports pay 30% more. Tourists arrive here.','Flughafen Václav Havel. Von hier fliegen tschechische Waren in die Welt: Autos, Bier, Wein, Glas, Hopfen und Stahl. Export bringt 30 % mehr. Hier kommen Touristen an.']},
   {id:'lipno', name:'Lipno', ll:[14.15,48.68], kind:'zone', plat:1, prod:{turiste:15,voda:25}, desc:['Jezero Lipno na Šumavě. Rekreanti se vrací do měst a z nádrže se vozí voda.','Lake Lipno in the Šumava mountains. Holidaymakers head back to the cities and the reservoir supplies water.','Lipno-Stausee im Böhmerwald. Urlauber fahren zurück in die Städte, der Stausee liefert Wasser.']},
   {id:'zatec', name:'Žatec', ll:[13.55,50.33], kind:'factory', plat:1, makes:{out:'chmel', inp:['voda'], every:15}, desc:['Žatecko, nejslavnější chmelařský kraj. Chmelnice potřebují na zalévání vodu z Lipna nebo z Karlových Varů.','Žatec, the most famous hop-growing region. The hop fields need water from Lipno or Karlovy Vary.','Saaz, das berühmteste Hopfenanbaugebiet. Die Hopfengärten brauchen Wasser aus Lipno oder Karlsbad.']},
@@ -1055,6 +1143,10 @@ for(const m of MOUNTAINS) for(const s of SITES){ const n=nodes[s.node], need=m.r
 const TUN=10, PK_HILL=[[0,0,1,1],[0.5,0.3,0.7,0.75],[-0.45,-0.35,0.65,0.7]], PK_ROCK=[[0,0,1,1],[0.55,0.25,0.62,0.72],[-0.5,0.3,0.6,0.66],[0.1,-0.55,0.55,0.6]];
 function mtPeaks(){ for(const m of MOUNTAINS){ m.peaks=[]; m.bound=0; for(const [ox,oz,rs,hs] of (m.hill?PK_HILL:PK_ROCK)){ const R=m.r*rs*(m.hill?1.3:1); m.peaks.push({x:m.x+ox*m.r,y:m.y+oz*m.r,r:R,h:m.h*hs}); m.bound=Math.max(m.bound,Math.hypot(ox,oz)*m.r+R); } } }
 mtPeaks();
+// mountains stay inside the country: nudge them inland, and only if that is not enough make them a little smaller
+{ const cx=BORDER.reduce((a,p)=>a+p[0],0)/BORDER.length, cy=BORDER.reduce((a,p)=>a+p[1],0)/BORDER.length;
+  const outside=m=>m.peaks.some(p=>{ const R=p.r*(m.hill?1:1); for(let k=0;k<16;k++){ const a=k/16*Math.PI*2; if(!inPoly(p.x+Math.cos(a)*R,p.y+Math.sin(a)*R)) return true; } return false; });
+  for(const m of MOUNTAINS){ for(let it=0; it<40 && outside(m); it++){ if(it<20){ const d=Math.hypot(cx-m.x,cy-m.y)||1; m.x+=(cx-m.x)/d*8; m.y+=(cy-m.y)/d*8; } else { m.r*=0.93; m.h*=0.96; } mtPeaks(); } } }
 function hillH(x,y){ let h=0; for(const m of MOUNTAINS){ if(!m.hill) continue; const dx=x-m.x, dy=y-m.y; if(dx*dx+dy*dy>=m.bound*m.bound) continue;
     for(const p of m.peaks){ const d=Math.hypot(x-p.x,y-p.y); if(d<p.r){ const v=p.h*(0.5+0.5*Math.cos(Math.PI*d/p.r)); if(v>h) h=v; } } } return h; }
 function rockH(x,y){ let h=0; for(const m of MOUNTAINS){ if(m.hill) continue; const dx=x-m.x, dy=y-m.y; if(dx*dx+dy*dy>=m.bound*m.bound) continue;
@@ -1085,6 +1177,8 @@ const lakes = LAKES.map(([lon,lat,a,b,deg,name],i)=>{ const [cx,cy]=P(lon,lat), 
   for(let k=0;k<N;k++){ const t=k/N*Math.PI*2, w=1+0.13*Math.sin(3*t+i*1.7)+0.08*Math.sin(5*t+i*2.3)+0.05*Math.sin(9*t+i);   // a wobbly ellipse: a natural shore
     const lx=Math.cos(t)*a*w, ly=Math.sin(t)*b*w; pts.push([cx+lx*Math.cos(r)-ly*Math.sin(r), cy+lx*Math.sin(r)+ly*Math.cos(r)]); }
   return {x:cx,y:cy,a,b,name,pts}; });
+// mountains leave the lakes in the open
+for(const m of MOUNTAINS) for(let it=0; it<25; it++){ const hit=lakes.some(L=>L.pts.some(([x,y])=>m.peaks.some(p=>Math.hypot(p.x-x,p.y-y)<p.r*(m.hill?1.3:1)+6))); if(!hit) break; m.r*=0.92; m.h*=0.97; mtPeaks(); }
 function inPts(x,y,pts){ let ins=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if(((yi>y)!==(yj>y)) && (x<(xj-xi)*(y-yi)/(yj-yi)+xi)) ins=!ins; } return ins; }
 function inLake(x,y,m=0){ for(const L of lakes){ if(Math.abs(x-L.x)>L.a*1.3+m || Math.abs(y-L.y)>L.a*1.3+m) continue; if(inPts(x,y,L.pts)) return L;
     if(m>0) for(let i=0;i<L.pts.length;i++){ const A=L.pts[i], B=L.pts[(i+1)%L.pts.length]; if(segDist(x,y,{x:A[0],y:A[1]},{x:B[0],y:B[1]})<m) return L; } }
@@ -2072,6 +2166,18 @@ if(!TUT){ rockTown(15.3,50.47,16,26); rockTown(16.12,50.61,18,30); rockTown(14.3
     const sp=new T.Sprite(new T.SpriteMaterial({map:new T.CanvasTexture(c),depthWrite:false,transparent:true})); sp.position.set(pk.x-CX,34,pk.y-CZ); sp.renderOrder=2; scene.add(sp); parkLabels.push(sp); } }
 
 /* ----- open country: a patchwork of fields ----- */
+let fields=null;
+// a line across a field: the field is cut back to leave a grass verge either side of the track instead of lying under it
+function layFields(){ if(!fields) return; const {F,im,FC}=fields, col=new T.Color(); let n=0; const cap=im.instanceMatrix.count;
+  const put=(f,u,v,w,d)=>{ if(n>=cap) return; const ca=Math.cos(f.a), sa=Math.sin(f.a), x=f.x+u*ca+v*sa, y=f.y-u*sa+v*ca;   // the box turns by a about the vertical: its length runs along (cos a, -sin a) on the map
+    setInst(im,n,x-CX,0.12,y-CZ,w,0.3,d,f.a); im.setColorAt(n,col.set(FC[f.c])); n++; };
+  for(const f of F){ const ca=Math.cos(f.a), sa=Math.sin(f.a);
+    if(!trackNear(f.x,f.y,f.r+12)){ put(f,0,0,f.w,f.d); continue; }
+    const rows=Math.max(1,Math.round(f.d/6)), dv=f.d/rows, step=3, cols=Math.max(2,Math.round(f.w/step)), du=f.w/cols;
+    for(let r=0;r<rows;r++){ const v=-f.d/2+dv*(r+0.5); let start=null;
+      for(let c=0;c<=cols;c++){ const u=-f.w/2+du*(c+0.5); let free=false; if(c<cols){ const x=f.x+u*ca+v*sa, y=f.y-u*sa+v*ca; free=!trackNear(x,y,11); }
+        if(free && start===null) start=c; if(!free && start!==null){ const u0=-f.w/2+du*start, u1=-f.w/2+du*c; if(u1-u0>=3) put(f,(u0+u1)/2,v,u1-u0,dv+0.02); start=null; } } } }
+  im.count=n; im.instanceMatrix.needsUpdate=true; if(im.instanceColor) im.instanceColor.needsUpdate=true; }
 { const furrow=canvasTex(64,64,(g,w,h)=>{ g.fillStyle='#ffffff'; g.fillRect(0,0,w,h); g.fillStyle='rgba(0,0,0,0.13)'; for(let x=0;x<w;x+=8) g.fillRect(x,0,3,h); });
   const FC=['#e9d36a','#f4e04d','#a8cf5c','#9c7a52','#cdbb7c','#86bd4e','#d9c25a'], F=[];
   for(let k=0;k<5000 && F.length<(TUT?40:300);k++){ const x=30+rnd()*(700*SC-60), y=30+rnd()*(415*SC-60), w=50+rnd()*70, d=34+rnd()*40, a=rnd()*Math.PI, c=Math.floor(rnd()*FC.length);
@@ -2081,8 +2187,8 @@ if(!TUT){ rockTown(15.3,50.47,16,26); rockTown(16.12,50.61,18,30); rockTown(14.3
     if(industryAt.some(q=>Math.hypot(q[0]-x,q[1]-y)<q[2]+Math.max(w,d)/2) || F.some(f=>Math.hypot(f.x-x,f.y-y)<(f.r+Math.max(w,d)/2)*0.8)) continue;
     const ca=Math.cos(a), sa=Math.sin(a), inside=[]; for(const t of trees){ const dx=t.x-x, dy=t.y-y; if(Math.abs(dx)>w||Math.abs(dy)>w) continue; const u=dx*ca+dy*sa, v=-dx*sa+dy*ca; if(Math.abs(u)<w/2+3 && Math.abs(v)<d/2+3) inside.push(t); }
     if(inside.length>3) continue; inside.forEach(t=>t.noShow=true); F.push({x,y,w,d,a,c,r:Math.max(w,d)/2}); }
-  const fm=new T.MeshLambertMaterial({map:furrow}), im=new T.InstancedMesh(box,fm,Math.max(1,F.length)); const col=new T.Color();
-  F.forEach((f,i)=>{ setInst(im,i,f.x-CX,0.12,f.y-CZ,f.w,0.3,f.d,f.a); im.setColorAt(i,col.set(FC[f.c])); }); im.count=F.length; im.receiveShadow=true; im.frustumCulled=false; if(im.instanceColor) im.instanceColor.needsUpdate=true; scene.add(im);
+  const fm=new T.MeshLambertMaterial({map:furrow}), im=new T.InstancedMesh(box,fm,F.length+6000);
+  im.receiveShadow=true; im.frustumCulled=false; scene.add(im); fields={F,im,FC};
   bakeFlush(STATIC_POOL); }
 
 /* ----- labels ----- */
@@ -2277,7 +2383,7 @@ function rebuildTracks(){
   for(const G of [flyGroup,bridgeGroup,portalGroup,switchGroup]){ bake(G,DYN_POOL); G.clear(); } bakeFlush(DYN_POOL);
   let sig=''; for(const d of decor){ d.obj.visible=!trackNear(d.x,d.y,d.r+5); sig+=d.obj.visible?'1':'0'; }
   if(sig!==decorSig){ decorSig=sig; for(const d of decor) if(d.obj.visible) bake(d.obj,DECOR_POOL); bakeFlush(DECOR_POOL); }
-  updateTrees(); updateGridDots(); rebuildSignals(); dirty();
+  updateTrees(); layFields(); updateGridDots(); rebuildSignals(); dirty();
 }
 
 /* ----- signals: small gantries across the track ----- */
@@ -2414,7 +2520,16 @@ function turnTo(y){ yawGoal=y; if(yawAnim) return; const tick=()=>{ const d=yawG
 $('rotL').onclick=()=>turnTo(yawGoal-Math.PI/4);
 $('rotR').onclick=()=>turnTo(yawGoal+Math.PI/4);
 $('compass').onclick=()=>{ const k=Math.round(yawGoal/(2*Math.PI)); turnTo(k*2*Math.PI); };
-window.addEventListener('keydown',e=>{ if(e.target.closest && e.target.closest('input,textarea')) return; if(e.key==='q'||e.key==='Q') turnTo(yawGoal-Math.PI/8); else if(e.key==='e'||e.key==='E') turnTo(yawGoal+Math.PI/8); });
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+// on a computer: arrows or WASD move the map, Q/E turn it, + and − zoom
+const keysDown=new Set();
+window.addEventListener('keydown',e=>{ if(e.target.closest && e.target.closest('input,textarea')) return; if(e.ctrlKey||e.metaKey||e.altKey) return; const k=e.key.toLowerCase();
+  if(k==='q') turnTo(yawGoal-Math.PI/8); else if(k==='e') turnTo(yawGoal+Math.PI/8);
+  else if(k==='+'||k==='=') zoomTo(camD/1.25,W/2,H/2); else if(k==='-'||k==='_') zoomTo(camD*1.25,W/2,H/2);
+  else if(['arrowup','arrowdown','arrowleft','arrowright','w','a','s','d'].includes(k) && menuEl.hidden && sheet.hidden){ keysDown.add(k); e.preventDefault(); } });
+window.addEventListener('keyup',e=>keysDown.delete(e.key.toLowerCase())); window.addEventListener('blur',()=>keysDown.clear());
+function keyPan(dt){ if(!keysDown.size) return; let fx=0, fz=0; for(const k of keysDown){ if(k==='arrowup'||k==='w') fz-=1; if(k==='arrowdown'||k==='s') fz+=1; if(k==='arrowleft'||k==='a') fx-=1; if(k==='arrowright'||k==='d') fx+=1; }
+  const sp=camD*1.1*dt, c=Math.cos(camYaw), sn=Math.sin(camYaw); target.x+=(fx*c+fz*sn)*sp; target.z+=(-fx*sn+fz*c)*sp; clampTarget(); updateCamera(); }
 cv.addEventListener('wheel',e=>{ e.preventDefault(); const r=cv.getBoundingClientRect(); zoomTo(camD*Math.exp(e.deltaY*0.0015),e.clientX-r.left,e.clientY-r.top); },{passive:false});
 
 let tool='pan', anchor=null, zoomInvert=false;   // fingers apart = zoom in, together = zoom out
@@ -2430,7 +2545,7 @@ cv.addEventListener('pointerdown',e=>{
     if(gesture && gesture.act && gesture.act.added.length){ revertAct(gesture.act); toast(L('Dva prsty posouvají mapu. Rozestavěné koleje jsem vrátil i s penězi.','Two fingers move the map. The half-built track was removed and refunded.','Zwei Finger bewegen die Karte. Das angefangene Gleis wurde samt Münzen zurückgegeben.')); }
     gesture=null; hidePreview(); return; }
   if(pts.size>2) return;
-  gesture={sx:p.x, sy:p.y, t0:performance.now(), moved:false, g:groundAt(p.x,p.y), act:null, mouse:e.pointerType==='mouse', from:null, last:null, lastDir:null};
+  gesture={sx:p.x, sy:p.y, t0:performance.now(), moved:false, g:groundAt(p.x,p.y), act:null, mouse:e.pointerType==='mouse', btn:e.button, yaw0:camYaw, from:null, last:null, lastDir:null};
 });
 // Drawing a line with one finger: straight pieces every ~90 units, joined by smooth curves.
 // Dragging only shows where the line will go; it is built in one go when the finger lifts.
@@ -2459,13 +2574,14 @@ cv.addEventListener('pointermove',e=>{
     const g=groundAt(mx,my); if(g&&pinch.g){ target.x-=g.x-pinch.g.x; target.z-=g.y-pinch.g.y; clampTarget(); updateCamera(); } return; }
   if(!gesture) return;
   if(!gesture.moved && Math.hypot(p.x-gesture.sx,p.y-gesture.sy)>8){
-    if(gesture.mouse){ gesture.moved=true; }
+    if(gesture.mouse){ gesture.moved=true; if(gesture.btn===0 && tool==='track' && gesture.g){ const T0=pickTarget(gesture.g); if(T0.kind!=='free'){ gesture.from=T0; gesture.act=newAct(); anchor=T0; } } }
     else { if(tool==='track' && performance.now()-gesture.t0<120) return;   // a second finger may still be coming
       gesture.moved=true;
       if(tool==='track' && gesture.g){ const T0=pickTarget(gesture.g); if(T0.kind!=='free'){ gesture.from=T0; gesture.act=newAct(); anchor=T0; } } } }
   if(!gesture.moved) return;
   // one finger from a station or a track builds; from empty ground it moves the map
-  if(gesture.mouse || tool!=='track' || !gesture.from){ panBy(gesture.g,p); return; }
+  if(gesture.mouse && gesture.btn===2){ camYaw=yawGoal=gesture.yaw0+(p.x-gesture.sx)*0.008; updateCamera(); return; }   // right mouse button turns the view
+  if(tool!=='track' || !gesture.from){ panBy(gesture.g,p); return; }
   if(gesture.from){ const g=groundAt(p.x,p.y); if(g) dragBuild(g); }
 });
 function endPtr(e){ if(!pts.has(e.pointerId)) return; const p=pts.get(e.pointerId); pts.delete(e.pointerId);
@@ -2524,22 +2640,91 @@ function labelAt(px,py){ _lu.set(0,1,0).applyQuaternion(camera.quaternion); _rt.
     _b.copy(sp.position).addScaledVector(_lu,sp.scale.y).addScaledVector(_rt,sp.scale.x*0.36).project(camera); const x1=(_b.x+1)/2*W, y1=(1-_b.y)/2*H;
     const hw=Math.abs(x1-x0)+6; if(px>x0-hw && px<x0+hw && py<y0+4 && py>y1-4){ const d=Math.abs(px-x0); if(d<bd){ bd=d; best=s; } } }
   return best; }
+
+// a short article for the "Fun fact" button on each place card
+const ICON={turiste:'🧳',pracovnici:'👷',voda:'💧',posta:'✉️',obili:'🌾',chmel:'🌿',sklo:'🥂',auta:'🚗',pivo:'🍺',vino:'🍷',ocel:'🔩',uhli:'🪨',pneu:'🛞',phm:'⛽'};
+const FACTS={
+ praha:['Praha leží na Vltavě a přes řeku vede 18 mostů, nejslavnější je gotický Karlův most z roku 1357. Pražský hrad je podle Guinnessovy knihy největší starobylý hradní komplex na světě. Petřínská rozhledna vznikla v roce 1891 jako malá kopie Eiffelovy věže. Hlavní nádraží má secesní halu ve stylu Fanty.',
+  'Prague lies on the Vltava and 18 bridges cross the river, the most famous being the Gothic Charles Bridge from 1357. Prague Castle is listed by Guinness as the largest ancient castle complex in the world. The Petřín lookout tower was built in 1891 as a small copy of the Eiffel Tower. The main station has an Art Nouveau hall by Josef Fanta.',
+  'Prag liegt an der Moldau, über den Fluss führen 18 Brücken, die berühmteste ist die gotische Karlsbrücke von 1357. Die Prager Burg gilt laut Guinness als größte alte Burganlage der Welt. Der Aussichtsturm auf dem Petřín entstand 1891 als kleine Kopie des Eiffelturms. Der Hauptbahnhof hat eine Jugendstilhalle von Josef Fanta.'],
+ brno:['Brno je druhé největší město Česka a vede do něj první česká železnice: vlak z Vídně sem dojel v roce 1839. Nad městem stojí hrad Špilberk, kdysi obávané vězení, a katedrála na Petrově se dvěma štíhlými věžemi. V Brně Gregor Mendel objevil zákony dědičnosti. Brněnské výstaviště patří k největším v Evropě.',
+  'Brno is the second-largest Czech city and had the first railway in the country: the train from Vienna arrived in 1839. Above the city stand Špilberk castle, once a feared prison, and the cathedral on Petrov hill with two slender spires. In Brno Gregor Mendel discovered the laws of heredity. Its exhibition grounds are among the largest in Europe.',
+  'Brünn ist die zweitgrößte Stadt Tschechiens und bekam die erste Eisenbahn des Landes: 1839 kam der Zug aus Wien. Über der Stadt thronen die Burg Spielberg, einst ein gefürchtetes Gefängnis, und der Dom auf dem Petersberg. Hier entdeckte Gregor Mendel die Vererbungsregeln. Das Messegelände gehört zu den größten Europas.'],
+ ostrava:['Ostrava vyrostla na uhlí a železe. V Dolních Vítkovicích dnes stojí vysoká pec, kde se tavilo železo až do roku 1998, a do jejího vršku se dá vyjet výtahem. Věž Nové radnice je nejvyšší radniční věží v Česku. Ulice Stodolní je známá tím, že tu nikdy nespí.',
+  'Ostrava grew on coal and iron. In Lower Vítkovice a blast furnace that made iron until 1998 still stands, and a lift takes you to its top. The tower of the New Town Hall is the tallest town hall tower in the country. Stodolní Street is known as the street that never sleeps.',
+  'Ostrava wuchs mit Kohle und Eisen. In Unter-Witkowitz steht ein Hochofen, der bis 1998 Eisen schmolz, ein Aufzug fährt bis nach oben. Der Turm des Neuen Rathauses ist der höchste Rathausturm des Landes. Die Stodolní-Straße schläft angeblich nie.'],
+ plzen:['V Plzni se v roce 1842 poprvé uvařil ležák plzeňského typu, Pilsner Urquell, a dnes se tak vaří pivo po celém světě. Věž katedrály sv. Bartoloměje měří 102 metrů a je nejvyšší kostelní věží v Česku. Škodovy závody tu vyráběly lokomotivy, tramvaje i děla. Pod městem vedou kilometry starých sklepů.',
+  'In 1842 Pilsen brewed the first pale lager, Pilsner Urquell, and today beer like it is brewed all over the world. The tower of St Bartholomew’s Cathedral is 102 metres tall, the highest church tower in Czechia. The Škoda works built locomotives, trams and guns here. Kilometres of old cellars run beneath the city.',
+  'In Pilsen wurde 1842 das erste helle Lagerbier gebraut, das Pilsner Urquell, heute braut man es auf der ganzen Welt. Der Turm der Bartholomäuskathedrale ist 102 Meter hoch, der höchste Kirchturm Tschechiens. Die Škoda-Werke bauten hier Lokomotiven, Straßenbahnen und Kanonen. Unter der Stadt liegen kilometerlange Keller.'],
+ cb:['České Budějovice mají jedno z největších čtvercových náměstí ve střední Evropě a uprostřed stojí Samsonova kašna. Z Černé věže je vidět až na Šumavu. Odtud do Lince vedla koněspřežná železnice z roku 1832, jedna z prvních na kontinentu. Budvar tu vaří pivo od roku 1895.',
+  'České Budějovice has one of the largest square town squares in Central Europe, with Samson’s Fountain in the middle. From the Black Tower you can see as far as the Šumava hills. A horse-drawn railway to Linz opened here in 1832, one of the first on the continent. Budvar has brewed beer here since 1895.',
+  'Budweis hat einen der größten quadratischen Marktplätze Mitteleuropas, in der Mitte steht der Samsonbrunnen. Vom Schwarzen Turm sieht man bis in den Böhmerwald. Von hier fuhr ab 1832 die Pferdeeisenbahn nach Linz, eine der ersten des Kontinents. Budvar braut hier seit 1895.'],
+ krumlov:['Český Krumlov je zapsaný na seznamu UNESCO a jeho zámek je po Pražském hradě druhý největší v zemi. Barevně malovaná zámecká věž je symbolem města. V zámku hraje unikátní barokní divadlo s původními kulisami. Vltava tu obtáčí staré město v ostrém meandru.',
+  'Český Krumlov is a UNESCO World Heritage site and its castle is the second largest in the country after Prague Castle. The painted castle tower is the symbol of the town. The castle has a unique Baroque theatre with its original stage sets. The Vltava wraps round the old town in a tight bend.',
+  'Krumau gehört zum UNESCO-Welterbe, sein Schloss ist nach der Prager Burg das zweitgrößte im Land. Der bunt bemalte Schlossturm ist das Wahrzeichen der Stadt. Im Schloss gibt es ein einzigartiges Barocktheater mit Originalkulissen. Die Moldau umfließt die Altstadt in einer engen Schleife.'],
+ valtice:['Valtice jsou srdcem Lednicko-valtického areálu, největší krajinářsky upravené oblasti v Evropě, zapsané v UNESCO. Barokní zámek patřil Lichtenštejnům. Ve sklepích zámku sídlí Salon vín, kde se každý rok vybírá stovka nejlepších moravských vín. Kolem se táhnou vinice až k rakouské hranici.',
+  'Valtice is the heart of the Lednice–Valtice Cultural Landscape, the largest designed landscape in Europe and a UNESCO site. Its Baroque chateau belonged to the Liechtenstein family. In its cellars the Wine Salon picks the hundred best Moravian wines every year. Vineyards stretch all the way to the Austrian border.',
+  'Feldsberg ist das Herz der Kulturlandschaft Eisgrub-Feldsberg, der größten gestalteten Landschaft Europas und UNESCO-Welterbe. Das Barockschloss gehörte den Liechtensteinern. In seinen Kellern wählt der Weinsalon jedes Jahr die hundert besten mährischen Weine. Weinberge reichen bis an die österreichische Grenze.'],
+ kv:['Karlovy Vary založil podle pověsti Karel IV., když jeho pes při honu objevil horký pramen. Vřídlo tryská až do výšky 12 metrů a voda má 73 °C. Lázeňské kolonády vedou podél říčky Teplé. Každé léto se tu koná mezinárodní filmový festival a pečou se slavné lázeňské oplatky.',
+  'Legend says Charles IV founded Karlovy Vary when his hound found a hot spring during a hunt. The Vřídlo spring shoots up to 12 metres high at 73 °C. Spa colonnades line the little Teplá river. Every summer the town hosts an international film festival, and it is famous for its spa wafers.',
+  'Der Sage nach gründete Karl IV. Karlsbad, als sein Hund bei der Jagd eine heiße Quelle fand. Der Sprudel schießt bis zu 12 Meter hoch, das Wasser hat 73 °C. Kolonnaden säumen das Flüsschen Tepl. Jeden Sommer gibt es ein internationales Filmfestival, berühmt sind auch die Karlsbader Oblaten.'],
+ kh:['Kutná Hora zbohatla na stříbře: ve středověku se tu razil pražský groš, nejdůležitější mince v zemi. Chrám sv. Barbory se třemi stanovými střechami stavěli horníci pro svou patronku. Nedaleko v Sedlci je kostnice vyzdobená kostmi asi 40 000 lidí. Celé historické centrum je v UNESCO.',
+  'Kutná Hora grew rich on silver: in the Middle Ages it minted the Prague groschen, the most important coin in the land. St Barbara’s Church with its three tent roofs was built by miners for their patron saint. Nearby in Sedlec is an ossuary decorated with the bones of about 40,000 people. The whole old town is a UNESCO site.',
+  'Kuttenberg wurde mit Silber reich: Im Mittelalter prägte man hier den Prager Groschen, die wichtigste Münze des Landes. Die Barbarakirche mit ihren drei Zeltdächern bauten Bergleute für ihre Schutzheilige. Im nahen Sedletz steht ein Beinhaus mit den Knochen von etwa 40 000 Menschen. Die ganze Altstadt ist UNESCO-Welterbe.'],
+ telc:['Telč má jedno z nejkrásnějších náměstí v Evropě: kolem něj stojí renesanční a barokní domy s barevnými štíty a podloubím. Město obklopují rybníky, které ho dřív chránily jako vodní hradby. Renesanční zámek nechal přestavět Zachariáš z Hradce. Od roku 1992 je Telč zapsaná v UNESCO.',
+  'Telč has one of the most beautiful squares in Europe, lined with Renaissance and Baroque houses with colourful gables and arcades. The town is ringed by ponds that once protected it like a moat. Zachariáš of Hradec rebuilt its Renaissance chateau. Telč has been a UNESCO site since 1992.',
+  'Teltsch hat einen der schönsten Plätze Europas mit Renaissance- und Barockhäusern, bunten Giebeln und Laubengängen. Teiche umgeben die Stadt und schützten sie früher wie ein Wassergraben. Zacharias von Neuhaus ließ das Renaissanceschloss umbauen. Seit 1992 gehört Teltsch zum UNESCO-Welterbe.'],
+ letiste:['Letiště Václava Havla Praha je největší letiště v Česku a ročně jím projde přes 13 milionů cestujících. Otevřeno bylo v roce 1937 a jeho první hala je dnes kulturní památka. Z letiště se dá letět do více než 150 měst. Vlakem ho chtějí spojit s Prahou rychlodrážkou.',
+  'Václav Havel Airport Prague is the largest airport in Czechia, with more than 13 million passengers a year. It opened in 1937 and its first terminal is now a listed building. You can fly from here to more than 150 cities. A fast rail link to the city centre is planned.',
+  'Der Flughafen Václav Havel Prag ist der größte Tschechiens mit über 13 Millionen Fluggästen im Jahr. Er wurde 1937 eröffnet, das erste Terminal steht heute unter Denkmalschutz. Von hier gibt es Flüge in mehr als 150 Städte. Eine schnelle Bahnverbindung in die Innenstadt ist geplant.'],
+ lipno:['Lipno je největší vodní plocha v Česku, přehrada na Vltavě dlouhá 42 kilometrů. Říká se mu jihočeské moře. V létě se tu jachtaří, v zimě se po zamrzlé hladině bruslí na stezce dlouhé až 11 kilometrů. Nad jezerem vede stezka korunami stromů.',
+  'Lipno is the largest body of water in Czechia, a 42-kilometre reservoir on the Vltava, nicknamed the South Bohemian Sea. In summer people sail here, and in winter they skate on a trail up to 11 kilometres long across the ice. A treetop walk rises above the lake.',
+  'Lipno ist das größte Gewässer Tschechiens, ein 42 Kilometer langer Stausee an der Moldau, auch Südböhmisches Meer genannt. Im Sommer wird gesegelt, im Winter läuft man auf einer bis zu 11 Kilometer langen Eisbahn Schlittschuh. Über dem See führt ein Baumwipfelpfad.'],
+ zatec:['Žatecký chmel patří k nejlepším na světě a pěstuje se tu už přes 700 let. Krajina chmelnic se sušárnami a vysokými konstrukcemi pro chmel je zapsaná v UNESCO. Ve městě stojí Chmelový maják a chmelový orloj. Žatecký chmel dává pivu jemnou hořkost.',
+  'Žatec hops are among the best in the world and have been grown here for over 700 years. The landscape of hop gardens, drying kilns and tall hop frames is a UNESCO site. The town has a Hop Lighthouse and a hop astronomical clock. Žatec hops give beer its gentle bitterness.',
+  'Saazer Hopfen gehört zu den besten der Welt und wird hier seit über 700 Jahren angebaut. Die Landschaft mit Hopfengärten, Darren und hohen Gerüsten ist UNESCO-Welterbe. In der Stadt stehen ein Hopfenleuchtturm und eine Hopfenuhr. Saazer Hopfen gibt dem Bier seine feine Bittere.'],
+ litvinov:['V Litvínově stojí velká rafinerie a chemička, kde se z ropy vyrábí benzin, nafta i plasty. Ropa sem přitéká potrubím z Německa a z Ruska. Okolí kdysi rozryly povrchové doly na hnědé uhlí. Litvínov je známý i hokejem, zdejší klub hraje nejvyšší soutěž už od roku 1959.',
+  'Litvínov has a large refinery and chemical works that turn crude oil into petrol, diesel and plastics. The oil arrives by pipeline from Germany and Russia. Opencast brown-coal mines once tore up the land around it. Litvínov is also known for ice hockey, its club has played in the top league since 1959.',
+  'In Litvínov stehen eine große Raffinerie und ein Chemiewerk, die aus Erdöl Benzin, Diesel und Kunststoffe machen. Das Öl kommt per Pipeline aus Deutschland und Russland. Tagebaue für Braunkohle haben die Umgebung einst aufgewühlt. Bekannt ist Litvínov auch für Eishockey, der Klub spielt seit 1959 in der höchsten Liga.'],
+ hana:['Haná je úrodná rovina kolem Olomouce a Prostějova, říká se jí obilnice Moravy. Rodí se tu pšenice a ječmen na slad. Hanáci mají své nářečí a pestré kroje. Z Hané pochází i slavné olomoucké tvarůžky.',
+  'Haná is the fertile plain around Olomouc and Prostějov, known as the granary of Moravia. Wheat and malting barley grow here. The people of Haná have their own dialect and colourful folk costumes. The famous Olomouc cheese also comes from here.',
+  'Die Hanna ist die fruchtbare Ebene um Olmütz und Proßnitz, die Kornkammer Mährens. Hier wachsen Weizen und Braugerste. Die Hannaken haben einen eigenen Dialekt und farbenfrohe Trachten. Auch der berühmte Olmützer Quargel stammt von hier.'],
+ karvina:['Karviná leží na černém uhlí, které se tu těží hlubinně přes 200 let. Poddolovaný kostel sv. Petra z Alkantary se kvůli poklesu půdy naklonil o 7 stupňů a říká se mu šikmý kostel. Těžba proměnila krajinu a vznikly nové rybníky v propadlinách. Lázně Darkov léčí jódobromovou solankou.',
+  'Karviná sits on black coal that has been mined deep underground for over 200 years. The Church of St Peter of Alcantara tilted 7 degrees as the ground sank and is called the leaning church. Mining changed the landscape and new ponds filled the hollows. Darkov spa heals with iodine-bromine brine.',
+  'Karwin liegt auf Steinkohle, die hier seit über 200 Jahren unter Tage abgebaut wird. Die Kirche des hl. Peter von Alcantara neigte sich durch Bergsenkungen um 7 Grad und heißt die schiefe Kirche. Der Bergbau formte die Landschaft, in Senken entstanden Teiche. Das Bad Darkau heilt mit Jod-Brom-Sole.'],
+ trinec:['Třinecké železárny pod Beskydy fungují od roku 1839 a vyrábějí kolejnice, dráty i ocelové tyče. Velkou část kolejnic na českých tratích vyrobili právě tady. Hokejový klub Oceláři je pojmenovaný podle zdejších hutníků. Okolí patří k nejhezčím horám na Moravě.',
+  'The Třinec ironworks below the Beskids have run since 1839 and make rails, wire and steel bars. Much of the rail on Czech lines was rolled right here. The hockey club Oceláři, the Steelmen, is named after the local workers. The mountains around are among the prettiest in Moravia.',
+  'Das Eisenwerk Třinec unter den Beskiden läuft seit 1839 und stellt Schienen, Draht und Stahlstangen her. Ein großer Teil der Schienen tschechischer Strecken wurde hier gewalzt. Der Hockeyklub Oceláři, die Stahlwerker, ist nach den Arbeitern benannt. Die Berge ringsum gehören zu den schönsten Mährens.'],
+ otrokovice:['V Otrokovicích vybudoval Tomáš Baťa továrny na boty, pneumatiky i vlastní letiště. Dnes se tu vyrábějí pneumatiky Barum pro auta po celé Evropě. Město leží na soutoku Moravy a Dřevnice. Baťova architektura z červených cihel je k vidění dodnes.',
+  'In Otrokovice Tomáš Baťa built factories for shoes and tyres and even his own airfield. Today Barum tyres for cars all over Europe are made here. The town lies where the Dřevnice joins the Morava river. Baťa’s red-brick architecture can still be seen.',
+  'In Otrokovice baute Tomáš Baťa Fabriken für Schuhe und Reifen und sogar einen eigenen Flugplatz. Heute entstehen hier Barum-Reifen für Autos in ganz Europa. Die Stadt liegt am Zusammenfluss von Dřevnice und March. Baťas Architektur aus rotem Backstein ist noch zu sehen.'],
+ novybor:['Nový Bor je centrem českého sklářství, sklo se tu foukalo už v 18. století. Zdejší lustry visí v palácích, hotelech i divadlech po celém světě. Ve sklárnách můžete vidět sklaře, jak foukají rozžhavené sklo. Ve městě je Sklářské muzeum.',
+  'Nový Bor is the centre of Czech glassmaking, glass was blown here as early as the 18th century. Its chandeliers hang in palaces, hotels and theatres all over the world. In the glassworks you can watch glassblowers shape molten glass. The town has a Glass Museum.',
+  'Haida ist das Zentrum der böhmischen Glasmacherkunst, schon im 18. Jahrhundert wurde hier Glas geblasen. Lüster von hier hängen in Palästen, Hotels und Theatern auf der ganzen Welt. In den Glashütten sieht man Glasbläsern bei der Arbeit zu. Die Stadt hat ein Glasmuseum.'],
+ mikulov:['Mikulov s bílým zámkem na skále je vinařskou metropolí jižní Moravy. Nad městem se zvedají vápencové Pálava a Svatý kopeček s křížovou cestou. Vína odsud mají díky vápenci minerální chuť. V zámeckém sklepě stojí obří sud na víc než 100 000 litrů.',
+  'Mikulov, with its white chateau on a rock, is the wine capital of South Moravia. Above the town rise the limestone Pálava hills and Holy Hill with its Stations of the Cross. The limestone gives the local wines a mineral taste. The chateau cellar holds a giant barrel of more than 100,000 litres.',
+  'Nikolsburg mit dem weißen Schloss auf dem Felsen ist die Weinhauptstadt Südmährens. Über der Stadt erheben sich die Kalkberge der Pollauer Berge und der Heilige Berg mit Kreuzweg. Der Kalk gibt den Weinen einen mineralischen Geschmack. Im Schlosskeller steht ein Riesenfass für über 100 000 Liter.'],
+ mb:['V Mladé Boleslavi založili Laurin a Klement v roce 1895 firmu na kola, ze které vyrostla Škoda Auto. Dnes tu z linky sjede víc než tisíc aut denně. V muzeu Škoda můžete vidět první motocykly i závodní auta. Škodovka je jeden z největších výrobců v Česku.',
+  'In Mladá Boleslav, Laurin and Klement started a bicycle company in 1895 that grew into Škoda Auto. Today more than a thousand cars a day roll off the lines here. The Škoda Museum shows the first motorcycles and racing cars. Škoda is one of the biggest manufacturers in Czechia.',
+  'In Jungbunzlau gründeten Laurin und Klement 1895 eine Fahrradfirma, aus der Škoda Auto wurde. Heute laufen hier täglich über tausend Autos vom Band. Das Škoda-Museum zeigt die ersten Motorräder und Rennwagen. Škoda gehört zu den größten Herstellern Tschechiens.']
+};
+const tile=(c,extra)=>`<span class="ctile"><i style="background:${CARGO[c].color}22;border-color:${CARGO[c].color}">${ICON[c]||'📦'}</i><b>${CARGO[c].name}</b>${extra||''}</span>`;
 function cityCardHtml(s){
   const need = s.levels && !s.done ? s.levels[s.lvl] : null;
-  const wants = need ? Object.entries(need).map(([k,v])=>{ const g=Math.min(s.got[k]||0,v); return `<div class="need"><i style="background:${CARGO[k].color}"></i><span>${CARGO[k].name}</span><b>${g}/${v}</b><span class="track"><span class="fill" style="width:${g/v*100}%;background:${CARGO[k].color}"></span></span></div>`; }).join('')
-    : s.levels ? `<p class="sub">${L('Všechno splněno ★★★','All done ★★★','Alles erledigt ★★★')}</p>` : '';
-  const inputs = s.makes ? s.makes.inp.map(c=>`<span class="wchip"><i style="background:${CARGO[c].color}"></i>${CARGO[c].name} <b>${s.inbuf[c]||0}</b></span>`).join('') : '';
-  const recipe = s.makes ? (()=>{ const m=s.makes, can=Math.min(...m.inp.map(c=>s.inbuf[c]||0)), miss=m.inp.filter(c=>!(s.inbuf[c]>0)).map(c=>lc(CARGO[c].name));
-    return `<div class="recipe"><b>${m.inp.map(c=>'1× '+lc(CARGO[c].name)).join(' + ')} → 1× ${lc(CARGO[m.out].name)}</b><small>${L(`Každý dovezený vůz od každé suroviny dá jeden vůz výrobku. Teď má na ${can} ${lc(CARGO[m.out].name)}.`,`Each wagon of every input makes one wagon of product. Right now enough for ${can}.`,`Je ein Wagen jedes Rohstoffs ergibt einen Wagen Ware. Gerade reicht es für ${can}.`)}${miss.length?' '+L('Chybí: ','Missing: ','Es fehlt: ')+miss.join(', ')+'.':''}</small></div>`; })() : '';
-  const exp = s.exports ? s.exports.map(c=>`<span class="wchip"><i style="background:${CARGO[c].color}"></i>${CARGO[c].name}</span>`).join('') : '';
-  const offers = Object.keys(s.stock).filter(c=>isSourceOf(s,c)).map(c=>`<span class="wchip"><i style="background:${CARGO[c].color}"></i>${CARGO[c].name} <b>${s.stock[c]}</b></span>`).join('');
+  const wants=[];
+  if(need) for(const [k,v] of Object.entries(need)){ const g=Math.min(s.got[k]||0,v); wants.push(tile(k,`<small>${g}/${v}</small><span class="track"><span class="fill" style="width:${g/v*100}%;background:${CARGO[k].color}"></span></span>`)); }
+  if(s.makes) for(const c of s.makes.inp) wants.push(tile(c,`<small>${L('na skladě','in stock','auf Lager')} ${s.inbuf[c]||0}</small>`));
+  if(s.exports) for(const c of s.exports) wants.push(tile(c,`<small>${L('vývoz +30 %','export +30%','Export +30 %')}</small>`));
+  const offers=Object.keys(s.stock).filter(c=>isSourceOf(s,c)).map(c=>tile(c,`<small>${s.stock[c]} ${L('vozů','wagons','Wagen')}</small>`));
   const kind = s.kind==='airport'?L('Letiště','Airport','Flughafen'):s.kind==='city'?(s.tourist?L('Turistické místo','Tourist town','Ausflugsort'):L('Město','City','Stadt')):(s.kind==='factory'?L('Továrna','Factory','Fabrik'):L('Místo','Site','Ort'));
+  const fact=FACTS[s.id]?L(...FACTS[s.id]):L(...s.desc);
   return `<header><i class="dot" style="background:${labelColor(s)}"></i><div><h2>${s.name}</h2><small>${kind}${s.levels?' · '+L('úroveň','level','Stufe')+' '+(s.done?3:s.lvl+1)+'/3':''}</small></div></header>
-  <p class="sub">${L(...s.desc)}</p>${recipe}
-  <div class="cc"><div><h4>${L('Potřebuje','Needs','Braucht')}</h4>${need||s.levels?wants:''}${inputs?`<div class="wagons">${inputs}</div><small class="sub">${L('na výrobu','for production','für die Produktion')}</small>`:''}${exp?`<div class="wagons">${exp}</div><small class="sub">${L('na vývoz, +30 %','for export, +30%','für den Export, +30 %')}</small>`:''}${!need&&!s.levels&&!inputs&&!exp?`<p class="sub">${L('nic','nothing','nichts')}</p>`:''}</div>
-  <div><h4>${L('Nabízí','Offers','Bietet')}</h4>${offers?`<div class="wagons">${offers}</div>`:`<p class="sub">${L('nic k odvozu','nothing to pick up','nichts abzuholen')}</p>`}</div></div>
-  <div class="actions"><button class="btn small" data-tc="newtrain">${L('Nový vlak odsud','New train from here','Neuer Zug von hier')}</button><button class="btn small ghost" data-tc="more">${L('Odjezdy a víc','Departures and more','Abfahrten und mehr')}</button><button class="btn small ghost" data-tc="close">${L('Zavřít','Close','Schließen')}</button></div>`; }
-function showCityCard(s){ cardTrain=null; cardSite=s; tcHtml=cityCardHtml(s); tcard.innerHTML=tcHtml; tcWrap.hidden=false; }
+  <button class="btn small ghost factbtn" data-tc="fact">💡 ${L('Zajímavost','Fun fact','Wissenswertes')}</button><p class="fact"${factOpen?'':' hidden'}>${fact}</p>
+  <div class="cc"><div><h4>${L('Chce','Wants','Will')}</h4>${wants.length?`<div class="ctiles">${wants.join('')}</div>`:(s.levels?`<p class="sub">${L('Všechno splněno ★★★','All done ★★★','Alles erledigt ★★★')}</p>`:`<p class="sub">${L('nic','nothing','nichts')}</p>`)}</div>
+  <div><h4>${L('Nabízí','Offers','Bietet')}</h4>${offers.length?`<div class="ctiles">${offers.join('')}</div>`:`<p class="sub">${L('nic','nothing','nichts')}</p>`}</div></div>
+  <div class="actions"><button class="btn small" data-tc="newtrain">${L('Nový vlak odsud','New train from here','Neuer Zug von hier')}</button><button class="btn small ghost" data-tc="more">${L('Odjezdy','Departures','Abfahrten')}</button><button class="btn small ghost" data-tc="close">${L('Zavřít','Close','Schließen')}</button></div>`; }
+let factOpen=false;
+function showCityCard(s){ if(cardSite!==s) factOpen=false; cardTrain=null; cardSite=s; tcHtml=cityCardHtml(s); tcard.innerHTML=tcHtml; tcWrap.hidden=false; }
 const money2 = v => `<b class="${v>=0?'okc':'warn'}">${v>=0?'+':'−'}${fmtK(Math.abs(Math.round(v)))}</b>`;
 // big countdown to the next departure (1 game minute = 1 s at 1×)
 function countdownHtml(tr){ let t=null, what='';
@@ -2562,6 +2747,7 @@ const tcard=tcWrap.firstChild; let tcHtml='';
 function showTrainCard(tr){ cardSite=null; cardTrain=tr; tcHtml=trainCardHtml(tr); tcard.innerHTML=tcHtml; tcWrap.hidden=false; }
 function hideTrainCard(){ cardTrain=null; cardSite=null; warnOpen=false; tcWrap.hidden=true; }
 tcWrap.addEventListener('click',e=>{ if(e.target===tcWrap){ hideTrainCard(); return; } const b=e.target.closest('[data-tc]'); if(!b) return; const tr=cardTrain, cs=cardSite; hideTrainCard();
+  if(b.dataset.tc==='fact' && cardSite){ factOpen=!factOpen; showCityCard(cardSite); return; }
   if(b.dataset.tc==='fix'){ openEditor(+b.dataset.id); return; } if(b.dataset.tc==='newtrain' && cs){ openEditor(0,cs.id); return; } if(b.dataset.tc==='more' && cs){ showSite(cs); return; }
   if(b.dataset.tc==='reset' && tr){ resetTrain(tr); return; }
   if(b.dataset.tc==='edit' && tr) openEditor(tr.id);
@@ -2683,7 +2869,7 @@ function renderNeeds(){
 
 /* ================= sheets ================= */
 const sheet=$('sheet'), scrim=$('scrim'); let sheetKind=null, sheetTouchAt=0, sheetHtml='';
-function openSheet(html,kind,keepScroll){ const y=sheet.scrollTop; sheet.innerHTML=html; sheetHtml=html; sheet.hidden=false; scrim.hidden=false; if(kind!==sheetKind||!keepScroll) sheet.scrollTop=0; else sheet.scrollTop=y; sheetKind=kind; }
+function openSheet(html,kind,keepScroll){ const y=sheet.scrollTop, wc=sheet.querySelector('.wcarousel'), wx=wc?wc.scrollLeft:0; sheet.innerHTML=html; sheetHtml=html; sheet.hidden=false; scrim.hidden=false; if(kind!==sheetKind||!keepScroll) sheet.scrollTop=0; else { sheet.scrollTop=y; const w2=sheet.querySelector('.wcarousel'); if(w2) w2.scrollLeft=wx; } sheetKind=kind; }
 function closeSheet(){ sheet.hidden=true; scrim.hidden=true; sheetKind=null; }
 scrim.onclick=closeSheet;
 sheet.addEventListener('pointerdown',()=>{ sheetTouchAt=performance.now(); });
@@ -2791,8 +2977,8 @@ function edHtml(){
   h+=`<h3 class="stepn"><span>2</span>${L('Souprava','The train','Der Zug')} · ${d.consist.length}/8</h3>${trainStrip(d,true)}<p class="sub tiny">${L('Klepnutím na vůz ho odpojíš.','Tap a wagon to uncouple it.','Tippe auf einen Wagen, um ihn abzukoppeln.')}</p>`;
   const card = w => `<button class="addw2 ${useful.has(w)?'fit':''}" data-ed="addw" data-w="${w}" ${d.consist.length>=8?'disabled':''}>${wagonArt(w)}<span><b>${WAGONS[w].name}</b><small>${WAGONS[w].carries.filter(c=>!useful.has(w)||flows.includes(c)).map(c=>lc(CARGO[c].name)).join(', ')}</small><em>+ ${num(WAGONS[w].price)} ${COIN()}</em></span></button>`;
   const fit=WTYPES.filter(w=>useful.has(w)), rest=WTYPES.filter(w=>!useful.has(w));
-  h+=`<div class="addgrid2">${fit.map(card).join('')}</div>`;
-  if(rest.length) h+=`<details class="more"><summary>${L('Ostatní vozy (na téhle trase nic nevezou)','Other wagons (nothing to carry on this route)','Andere Wagen (auf dieser Strecke ohne Fracht)')}</summary><div class="addgrid2">${rest.map(card).join('')}</div></details>`;
+  // every wagon in the game on one strip you swipe sideways; the ones with something to carry on this route come first, in green
+  h+=`<div class="wcarousel">${fit.concat(rest).map(card).join('')}</div><p class="sub tiny">${L('Posuň do strany pro další vozy. Zelené mají na téhle trase co vézt.','Swipe sideways for more wagons. Green ones have something to carry on this route.','Zur Seite wischen für weitere Wagen. Grüne haben auf dieser Strecke Fracht.')}</p>`;
   // 2b · where each good gets unloaded, when several stops want it
   { const rows=splitRows(d); if(rows.length){ h+=`<h3 class="stepn"><span>⇣</span>${L('Kde kolik vyložit','Where to unload how much','Wo wie viel entladen')}</h3><p class="sub">${L('Více zastávek chce stejné zboží. Urči, kolik vozů se kde vyloží – zbytek jede dál.','Several stops want the same goods. Choose how many wagons are unloaded where – the rest travels on.','Mehrere Halte wollen dieselbe Ware. Lege fest, wie viele Wagen wo entladen werden – der Rest fährt weiter.')}</p><div class="splits">`+
       rows.map(r=>`<div class="split"><span><b>${r.i+1}. ${site(d.route[r.i]).name}</b><small><i style="background:${CARGO[r.c].color}"></i>${CARGO[r.c].name}</small></span><span class="step"><button data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="-1" data-max="${r.max}" aria-label="${L('méně','fewer','weniger')}">−</button><b class="n">${r.val} <small>${L('z','of','von')} ${r.max}</small></b><button data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="1" data-max="${r.max}" aria-label="${L('více','more','mehr')}">+</button>${r.auto?`<em class="autot">auto</em>`:`<button class="autob" data-ed="sp" data-i="${r.i}" data-c="${r.c}" data-v="auto" data-max="${r.max}">auto</button>`}</span></div>`).join('')+`</div>`; } }
@@ -2809,8 +2995,6 @@ function edHtml(){
       h+=`<tr><td class="n">${site(sid).name}<small>${stopIO(d,i)}</small></td><td><small>${ARR}</small><span class="tm">${arr==null?'–':hm(arr)}</span></td><td><small>${DEP}</small><span class="tm">${hm(dep)}</span>${i>0?`<span class="step"><button data-ed="w" data-i="${i}" data-v="-5">−5</button><button data-ed="w" data-i="${i}" data-v="5">+5</button></span>`:''}</td></tr>`; });
     h+=`</tbody></table></div><p class="sub">${L(`Nakládka a vykládka trvá až ${pl.dwell} min v každé stanici.`,`Loading and unloading takes up to ${pl.dwell} min at each station.`,`Be- und Entladen dauert bis zu ${pl.dwell} min pro Bahnhof.`)}</p></details>`;
     if(pl.cycle>E) h+=`<div class="alert crash">${L(`Jedna otočka trvá ${fmtDur(pl.cycle)}, vlak by nestíhal. Zvol delší interval.`,`One round trip takes ${fmtDur(pl.cycle)}, the train would fall behind. Pick a longer interval.`,`Ein Umlauf dauert ${fmtDur(pl.cycle)}, der Zug käme nicht hinterher. Wähle einen längeren Takt.`)}</div>`;
-    const cs=conflicts(trains.filter(t=>t.id!==d.id).concat([d]),gameMin,gameMin+1440).filter(c=>c.trs.includes(d));
-    if(cs.length) h+=cs.slice(0,3).map(conflictHtml).join('');
   } else if(pl.bad) h+=`<div class="alert">${pl.bad}</div>`;
   const pr=draftPrice(d), canSave=pl.ok && !d.routeBad && d.consist.length>0 && money>=pr.cost-pr.refund;
   h+=`<div class="actions">`;
@@ -2870,7 +3054,7 @@ function saveDraft(){
 function showSite(s){
   const n=s.node, here=trainsAt(n).length;
   const kind = s.kind==='airport'?L('Letiště','Airport','Flughafen'):s.kind==='city'?L('Město','City','Stadt'):(s.kind==='factory'?L('Továrna','Factory','Fabrik'):L('Místo','Site','Ort'));
-  let h=`<span class="eyebrow">${kind} · ${s.plat} ${kolej(s.plat)} ${L('ve stanici','at the station','im Bahnhof')}</span><h2>${s.name}</h2><p>${L(...s.desc)}</p>`;
+  let h=`<span class="eyebrow">${kind} · ${s.plat} ${kolej(s.plat)} ${L('ve stanici','at the station','im Bahnhof')}</span><h2>${s.name}</h2>`;
   const st=Object.keys(s.stock).filter(c=>isSourceOf(s,c));
   if(st.length) h+=`<h3>${L('Sklad k odvozu','Ready for pickup','Zum Abholen bereit')}</h3><div class="wagons">`+st.map(c=>`<span class="wchip"><i style="background:${CARGO[c].color}"></i>${CARGO[c].name} <b>${s.stock[c]}/${CAP}</b></span>`).join('')+`</div>`;
   if(s.exports) h+=`<h3>${L('Vývoz do světa','Exports to the world','Export in die Welt')} · +30 %</h3><div class="wagons">`+s.exports.map(c=>`<span class="wchip"><i style="background:${CARGO[c].color}"></i>${CARGO[c].name}</span>`).join('')+`</div><p class="sub">${L(`Odvezeno do světa: ${exported} vozů. Letiště bere vývoz bez omezení.`,`Shipped abroad: ${exported} wagons. The airport takes any amount.`,`Ins Ausland verschickt: ${exported} Wagen. Der Flughafen nimmt jede Menge.`)}</p>`;
@@ -2948,9 +3132,7 @@ setInterval(()=>{ if(sheetKind!=='trains' || performance.now()-sheetTouchAt<1500
 
 /* ================= plans tab ================= */
 function plansHtml(){
-  const cs=conflicts(trains,gameMin,gameMin+1440);
-  let h=`<div class="actions left"><button class="btn small ghost" data-back>← ${L('Zpět na mapu','Back to the map','Zurück zur Karte')}</button></div><section class="panel"><h2>${L('Střety v příštích 24 h','Conflicts in the next 24 h','Konflikte in den nächsten 24 h')}</h2>`+(trains.length ? (cs.length ? cs.slice(0,14).map(conflictHtml).join('') : `<div class="alert ok">${L('Podle jízdních řádů se žádné vlaky nesrazí.','According to the timetables no trains will collide.','Laut Fahrplänen stößt kein Zug zusammen.')}</div>`) : `<p>${L('Zatím nejezdí žádné vlaky.','No trains are running yet.','Noch fahren keine Züge.')}</p>`)+
-    `<p class="sub">${L('Srážka hrozí, když dva vlaky pojedou proti sobě po stejné koleji. Pomůže posunout odjezd, postavit vedle druhou kolej (výhybnu), nebo dát návěstidla na oba konce úseku.','A crash happens when two trains run head-on along the same track. Move a departure, build a second track alongside (a passing loop), or put signals at both ends of the section.','Ein Unfall droht, wenn zwei Züge auf demselben Gleis aufeinander zufahren. Verschiebe eine Abfahrt, baue ein zweites Gleis daneben (Ausweiche) oder stelle an beiden Enden Signale auf.')}</p></section>`;
+  let h=`<div class="actions left"><button class="btn small ghost" data-back>← ${L('Zpět na mapu','Back to the map','Zurück zur Karte')}</button></div>`+(trains.length?'':`<section class="panel"><p>${L('Zatím nejezdí žádné vlaky.','No trains are running yet.','Noch fahren keine Züge.')}</p></section>`);
   if(trains.length){ h+=`<section class="panel"><h2>${L('Vlaky','Trains','Züge')}</h2>`+trains.map(tr=>`<div class="row"><i style="background:${tr.color}"></i><div><b>${esc(tr.name)} · ${tr.route.map(id=>site(id).name).join(' → ')}</b><small class="${statusCls(tr)}">${statusText(tr)}</small><small>${L('odjezd','departs','Abfahrt')} ${hm(tr.start)}, ${everyLabel(tr.every)}</small></div><button class="btn small ghost" data-open="${tr.id}">${L('Upravit','Edit','Bearbeiten')}</button></div>`).join('')+`</section>`;
     const {visits}=predict(trains,gameMin,gameMin+1440);
     for(const [node,vs] of visits){ const s=nodeSite.get(node); const rows=vs.filter(v=>v.d>=gameMin).sort((a,b)=>a.d-b.d).slice(0,8);
@@ -3039,7 +3221,7 @@ function setPlayer(name, photo, line, ok){ playerView={name,line,ok}; if(photo) 
 function setSave(line, ok){ playerView.line=line; playerView.ok=ok; paintPlayer(); }
 function paintPlayer(){ setTimeout(renderMenu,0); $('playerName').textContent=tx(playerView.name); saveStateEl.textContent=tx(playerView.line); saveStateEl.className=playerView.ok?'ok':''; }
 function snapshotState(){
-  return { v:7, base:BASE_NODES, layout:SITES.map(s=>s.plat), money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
+  return { v:7, apv:2, base:BASE_NODES, layout:SITES.map(s=>s.plat), money, score, built, deliveries, crashes, won, gameMin, nextId, goalHit, incomeLog,
     nodes:nodes.slice(BASE_NODES).map(n=>[Math.round(n.x*10)/10,Math.round(n.y*10)/10]),
     edges:[...edges.values()].filter(e=>!e.internal).map(e=>[e.a,e.b,e.cost]), signals:[...signals], entry:[...entrySig], fan:[...fanPorts],
     sites:SITES.map(s=>({id:s.id,lvl:s.lvl,log:s.log,since:s.since,best:s.best,done:s.done,stock:s.stock,inbuf:s.inbuf,tm:s.tm})),
@@ -3064,7 +3246,8 @@ function loadState(st){
       st.base=BASE_NODES; } }
   const was=ready; ready=false; clearWorld();
   money=st.money; score=st.score||0; built=st.built||0; deliveries=st.deliveries||0; crashes=st.crashes||0; won=!!st.won; gameMin=st.gameMin||360; goalHit=!!st.goalHit; incomeLog=st.incomeLog||[]; curRate=-1;
-  for(const [x,y] of st.nodes||[]) addNode(x,y);
+  const ap=site('letiste'), apOld=P(14.23,50.12), apN=nodes[ap?ap.node:0];   // v38 moved the airport station west: carry the track right next to it along
+  for(const [x,y] of st.nodes||[]){ if(ap && !TUT && !st.apv && Math.hypot(x-apOld[0],y-apOld[1])<75) addNode(x+apN.x-apOld[0],y+apN.y-apOld[1]); else addNode(x,y); }
   for(const [a,b,c] of st.edges||[]) if(nodes[a]&&nodes[b]) addEdge(a,b,c);
     for(const s of st.signals||[]) if(nodes[s]) signals.add(s); /* entry signals are no longer used */
   for(const x of st.sites||[]){ const s=site(x.id); if(!s) continue; Object.assign(s.stock,x.stock||{}); Object.assign(s.inbuf,x.inbuf||{}); s.tm=x.tm||{}; if(s.levels){ s.lvl=x.lvl||0; s.log=x.log||[]; s.since=x.since||0; s.best=x.best||0; s.got={}; s.done=!!x.done; } }
@@ -3172,7 +3355,7 @@ function setLang(l){
 }
 /* ================= main menu ================= */
 const menuEl=$('menu'), menuBody=$('menuBody'); let menuView='main', menuStarted=false;
-let fsWanted=true; try{ fsWanted=localStorage.getItem('zi-fs')!=='0'; }catch(e){}
+let fsWanted=false; try{ fsWanted=localStorage.getItem('zi-fs2')==='1'; }catch(e){}   // off by default: in full screen Android hides the system bars and the user cannot get out of the game easily
 const hasProgress=()=>trains.length>0 || [...edges.values()].some(e=>!e.internal);
 function goFullscreen(){ const el=document.documentElement; if(!fsWanted || document.fullscreenElement || !el.requestFullscreen) return lockLand();
   el.requestFullscreen({navigationUI:'hide'}).then(lockLand).catch(()=>{}); }
@@ -3195,7 +3378,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
     h+=mb('settings','⚙',L('Nastavení','Settings','Einstellungen'),L('zvuk, jazyk, ovládání, reset','sound, language, controls, reset','Ton, Sprache, Steuerung, Reset'));
     h+=mb('rules','📖',L('Pravidla','Rules','Regeln'),L('jak se hraje','how to play','so wird gespielt'));
 
-    h+=`<div class="mfoot"><img src="${$('avatar').src}" alt=""><span>${esc(tx(playerView.name))} · ${esc(tx(playerView.line))}</span></div>`; }
+    }
   else if(menuView==='newconfirm'){ h=`${backBtn()}<h2>${L('Začít novou hru?','Start a new game?','Neues Spiel beginnen?')}</h2><p>${L('Všechny tratě, vlaky, peníze a skóre se smažou. Nejde to vrátit.','All lines, trains, coins and score will be deleted. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht. Das lässt sich nicht rückgängig machen.')}</p>`+mb('newgo','✚',L('Ano, nová hra','Yes, new game','Ja, neues Spiel'),'','danger')+mb('main','←',L('Ne, zpět','No, go back','Nein, zurück')); }
   else if(menuView==='login'){ h=`${backBtn('settings')}<h2>${L('Přihlášení','Sign in','Anmeldung')}</h2><p>${loginText()}</p>
       <div class="stats"><div><b>${num(score)}</b><small>${L('skóre','score','Punkte')}</small></div><div><b>${deliveries}</b><small>${L('dodávek','deliveries','Lieferungen')}</small></div><div><b>${crashes}</b><small>${L('srážek','crashes','Unfälle')}</small></div></div>`;
@@ -3217,6 +3400,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
       <ol>${introItems().map(x=>`<li>${x}</li>`).join('')}
       <li>${L('Každý konec stanice má zhlaví s výhybkami: vlak z trati vjede na kteroukoli volnou kolej. Výhybku mimo stanici postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','Every station end has a throat with switches: a train from the line can take any free platform track. Build a switch out on the line by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Jedes Bahnhofsende hat ein Weichenvorfeld: Ein Zug von der Strecke kann jedes freie Bahnsteiggleis nehmen. Eine Weiche auf der Strecke baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
+      <p class="sub">${L('Na počítači: kolečko myši přibližuje, levým tlačítkem táhneš koleje nebo posouváš mapu, pravým tlačítkem mapu otáčíš. Šipky nebo WASD posouvají mapu, Q a E ji otáčí, + a − přibližují.','On a computer: the mouse wheel zooms, drag with the left button to lay track or move the map, drag with the right button to turn it. Arrow keys or WASD move the map, Q and E turn it, + and − zoom.','Am Computer: Mausrad zoomt, mit der linken Taste ziehst du Gleise oder verschiebst die Karte, mit der rechten drehst du sie. Pfeiltasten oder WASD verschieben, Q und E drehen, + und − zoomen.')}</p>
       <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerKm} mincí za každý ujetý km (100 km = 500 mincí).`,`A wagon earns by cargo and distance. Running costs ${COST.runPerKm} coins per kilometre (100 km = 500 coins).`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer (100 km = 500 Münzen).`)}</p>`; }
   else if(menuView==='install'){ const url=GAME_URL; h=`${backBtn('settings')}<h2>${L('Instalace do telefonu','Install on your phone','Aufs Handy installieren')}</h2>
       <p>${L('Hra se dá nainstalovat jen z prohlížeče Chrome (Android) nebo Safari (iPhone). Když ji otevřeš z jiné aplikace, třeba z Messengeru nebo Clauda, běží v jejich okně a instalace tam nejde.','The game can only be installed from Chrome (Android) or Safari (iPhone). Opened from another app, such as Messenger or Claude, it runs in that app’s window where installing is not possible.','Das Spiel lässt sich nur aus Chrome (Android) oder Safari (iPhone) installieren. Aus einer anderen App geöffnet, etwa Messenger oder Claude, läuft es in deren Fenster, und dort geht keine Installation.')}</p>
@@ -3276,7 +3460,7 @@ menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) 
   else if(m==='install'){ if(installEvt){ const ev=installEvt; installEvt=null; ev.prompt(); ev.userChoice.then(c=>{ if(c.outcome!=='accepted'){ installEvt=ev; } renderMenu(); }).catch(()=>{}); } else { menuView='install'; renderMenu(); } }
   else if(m==='copylink'){ const done=()=>toast(L('Odkaz je zkopírovaný. Vlož ho do Chromu.','Link copied. Paste it into Chrome.','Link kopiert. Füge ihn in Chrome ein.'),'good'); try{ navigator.clipboard.writeText(GAME_URL).then(done,()=>prompt('',GAME_URL)); }catch(e){ prompt('',GAME_URL); } }
   else if(m==='snd') $('sndBtn').click();
-  else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
+  else if(m==='fs'){ fsWanted=!fsWanted; try{ localStorage.setItem('zi-fs2',fsWanted?'1':'0'); }catch(e){} if(!fsWanted && document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); }
   else if(m==='zoom0'||m==='zoom1'){ zoomInvert=m==='zoom1'; try{ localStorage.setItem('zi-zoom2',zoomInvert?'1':'0'); }catch(e){} renderMenu(); }
   else if(m==='plans'||m==='levels'){ closeMenu(); menuStarted=true; showTab(m); }
   else { menuView=m; renderMenu(); } });
@@ -3401,7 +3585,7 @@ let lastMenuDraw=0;
 let frameErr=0;
 function frame(now){ try{ frameBody(now); }catch(e){ if(frameErr++<5) console.error(e); } requestAnimationFrame(frame); }   // one bad frame never stops the game
 function frameBody(now){
-  const real=Math.min(0.05,(now-last)/1000); last=now;
+  const real=Math.min(0.05,(now-last)/1000); last=now; keyPan(real);
   const dt=menuEl.hidden ? real*SPEEDS[speedIdx] : 0; const n=Math.ceil(dt/0.25); for(let i=0;i<n;i++) step(dt/n);
   renderClock(); applyDaylight(); if(tool==='route' && rStops.length>1 && Math.abs(camD/routeZoom-1)>0.25) renderRoute();
   for(const tr of trains) placeTrain(tr,now,real);

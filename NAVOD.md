@@ -1,4 +1,4 @@
-# Železniční inženýr – jak dostat hru do telefonu
+# Koleje – jak dostat hru do telefonu
 
 Složka obsahuje hotovou webovou aplikaci (PWA). Po instalaci má ikonu na ploše, běží přes celou obrazovku a funguje i bez internetu.
 
