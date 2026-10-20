@@ -3388,7 +3388,7 @@ menuEl.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) 
   else if(m==='glogin'){ if(!window.FIREBASE_CONFIG) closeMenu(); googleLogin(); }
   else if(m==='glogout'){ googleLogout(); }
   else if(m==='tutorial' || m==='maingame'){ b.disabled=true; const go=()=>{ try{ localStorage.setItem('zi-level',m==='tutorial'?'tut':'cz'); }catch(er){} location.reload(); }; if(menuStarted) saveNow().then(go,go); else go(); }
-  else if(m==='quit'){ b.disabled=true; saveNow().then(ok=>{ savedOk=ok; menuStarted=false; menuView='saved'; if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); if(ok && isInstalled()) setTimeout(()=>{ try{ window.close(); }catch(e){} },1200); }); }
+  else if(m==='quit'){ b.disabled=true; saveNow().then(ok=>{ savedOk=ok; menuStarted=false; menuView='saved'; if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); renderMenu(); /* no window.close(): Android answers it with 'cannot open app' in shortcut windows */ }); }
   else if(m==='install'){ if(installEvt){ const ev=installEvt; installEvt=null; ev.prompt(); ev.userChoice.then(c=>{ if(c.outcome!=='accepted'){ installEvt=ev; } renderMenu(); }).catch(()=>{}); } else { menuView='install'; renderMenu(); } }
   else if(m==='copylink'){ const done=()=>toast(L('Odkaz je zkopírovaný. Vlož ho do Chromu.','Link copied. Paste it into Chrome.','Link kopiert. Füge ihn in Chrome ein.'),'good'); try{ navigator.clipboard.writeText(GAME_URL).then(done,()=>prompt('',GAME_URL)); }catch(e){ prompt('',GAME_URL); } }
   else if(m==='snd') $('sndBtn').click();
