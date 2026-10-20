@@ -4,7 +4,7 @@
   "description": "Postav železnici napříč Českem a dovez městům, co potřebují.",
   "lang": "cs",
   "id": "koleje-hra",
-  "start_url": "./",
+  "start_url": "./?app=koleje",
   "scope": "./",
   "display": "standalone",
   "orientation": "landscape",
