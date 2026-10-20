@@ -3,7 +3,7 @@
   "short_name": "Koleje",
   "description": "Postav železnici napříč Českem a dovez městům, co potřebují.",
   "lang": "cs",
-  "id": "./",
+  "id": "koleje-hra",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
