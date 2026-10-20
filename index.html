@@ -3303,11 +3303,11 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
   if(menuView==='main'){
     if(prog||menuStarted) h+=mb('continue','▶',menuStarted?L('Pokračovat','Resume','Weiterspielen'):L('Pokračovat ve hře','Continue game','Spiel fortsetzen'),`${num(score)} ${L('bodů','points','Punkte')} · ${fmtK(money)}`,'primary')+mb('new','✚',L('Nová hra','New game','Neues Spiel'),L('začít od začátku','start from scratch','von vorn beginnen'));
     else h+=mb('new','▶',L('Nová hra','New game','Neues Spiel'),L('postav první trať','build your first line','baue deine erste Strecke'),'primary');
-    if(menuStarted) h+=mb('quit','💾',L('Uložit a ukončit','Save and quit','Speichern und beenden'),lastSavedTxt());
     h+= TUT ? mb('maingame','🗺',L('Hlavní hra – Česko','Main game – Czechia','Hauptspiel – Tschechien'),L('opustit tutoriál','leave the tutorial','Tutorial verlassen')) : mb('tutorial','🎓',L('Tutoriál','Tutorial','Tutorial'),L('naučí tě hrát krok za krokem','teaches you step by step','zeigt dir alles Schritt für Schritt'));
 
     h+=mb('settings','⚙',L('Nastavení','Settings','Einstellungen'),L('zvuk, jazyk, ovládání, reset','sound, language, controls, reset','Ton, Sprache, Steuerung, Reset'));
     h+=mb('rules','📖',L('Pravidla','Rules','Regeln'),L('jak se hraje','how to play','so wird gespielt'));
+    h+=mb('quit','💾',L('Uložit a ukončit','Save and quit','Speichern und beenden'),lastSavedTxt());   // always the last item
 
     }
   else if(menuView==='newconfirm'){ h=`${backBtn()}<h2>${L('Začít novou hru?','Start a new game?','Neues Spiel beginnen?')}</h2><p>${L('Všechny tratě, vlaky, peníze a skóre se smažou. Nejde to vrátit.','All lines, trains, coins and score will be deleted. This cannot be undone.','Alle Strecken, Züge, Münzen und Punkte werden gelöscht. Das lässt sich nicht rückgängig machen.')}</p>`+mb('newgo','✚',L('Ano, nová hra','Yes, new game','Ja, neues Spiel'),'','danger')+mb('main','←',L('Ne, zpět','No, go back','Nein, zurück')); }
