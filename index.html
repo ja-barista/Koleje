@@ -939,7 +939,7 @@ const LOCO_COLORS = ['#ff5a4f','#3d8bff','#7b6cff','#ff8a2b','#14b8a6','#ff6fb5'
 const SC = 10, KM_PER_UNIT = 0.715/SC, TRAIN_KMH = 70, SPEED = TRAIN_KMH/60/KM_PER_UNIT;
 const SPEEDS=[0,1,5,15], SPEED_LABEL=['⏸','1×','5×','15×'];
 const MIN_DWELL=2, REPAIR_MIN=120, CAP=12, CORNER=10, PLAT_GAP=13, PLAT_FRONT=52, START_MONEY=30000;
-const THROAT=34;   // straight lead out of a station end: room for the switches to every platform track
+const THROAT=14;   // short straight lead out of a station end, then the line may curve
 const EVERY=[24,12,8,6,4,3,2];
 
 /* ================= map ================= */
@@ -1179,7 +1179,8 @@ function routePath(from,to,avoid,startPrev){
     let thrOrigin=null; if(p>=0 && throatKeys.has(ekey(p,u))){ let k=ku; while(k){ const [a,b]=k.split('>').map(Number); if(a<0 || !throatKeys.has(ekey(a,b))){ thrOrigin=a; break; } k=prev.get(k); } }
     const inThr = p>=0 && throatKeys.has(ekey(p,u));
     for(const v of adj.get(u)||[]){ const thrUV=throatKeys.has(ekey(u,v));
-      // every station end has a throat: switches from each line to every platform track at that end
+      if(thrUV && !inThr && p>=0 && !nodeSite.has(p) && !fanPorts.has(u)) continue;          // a line joined to one track has no switches to the others
+      if(!thrUV && inThr && !nodeSite.has(v) && !fanPorts.has(u)) continue;
       const sw = portOf.has(u) && p>=0 && (nodeSite.has(p) || throatKeys.has(ekey(p,u)) || throatKeys.has(ekey(u,v))) && v!==p;   // station switches: no turn limit inside the throat
       if(rev && p>=0 && v!==p){ const a=portOf.get(p), c=portOf.get(v); if(a && c && a.k!==c.k) continue; }
       if(!rev && !sw && (v===p || (p>=0 && !turnOK(p,u,v)))) continue; const kv=u+'>'+v; if(done.has(kv)) continue;
@@ -2157,10 +2158,6 @@ function trackSegments(){
     const [ax,ay]=unit(N.x,N.y,nodes[a].x,nodes[a].y), [bx,by]=unit(N.x,N.y,nodes[b].x,nodes[b].y);
     const p0={x:N.x+ax*R,y:N.y+ay*R}, p2={x:N.x+bx*R,y:N.y+by*R}, steps=Math.max(4,Math.round(R/5)); let prev=p0;
     const ek=ekey(n,a); for(let k=1;k<=steps;k++){ const q=bez(p0,N,p2,k/steps); segs.push({x1:prev.x,y1:prev.y,x2:q.x,y2:q.y,k:ek}); prev=q; } }
-  for(const st of SITES) for(const L of st.side){ const used=L.filter(portUsed); if(!used.length || L.length<2) continue;
-    for(const k of L){ const P=nodes[k], po=portOf.get(k), [ex,ey]=toW(st,po.dir*(st.plen/2-2),po.k*PLAT_GAP-(st.plat-1)/2*PLAT_GAP); segs.push({x1:ex,y1:ey,x2:P.x,y2:P.y,thr:1}); }
-    const ku=new Set(used.map(u=>portOf.get(u).k));   // draw each line's switches up to the next line's track: beyond it the two share the same ladder
-    for(const u of used){ const F=fanPt(u), a=portOf.get(u).k; for(const k of L){ const b=portOf.get(k).k; if(k===u) continue; let hidden=false; for(let c=Math.min(a,b)+1;c<Math.max(a,b);c++) if(ku.has(c)) hidden=true; if(hidden) continue; const P=nodes[k]; segs.push({x1:F.x,y1:F.y,x2:P.x,y2:P.y,thr:1}); } } }
   return segs;
 }
 const MAXS=20000;
@@ -2181,32 +2178,48 @@ const ballastIM=new T.InstancedMesh(bedGeo,mat('#a29c93'),MAXS), railIM=new T.In
 const FLY_COST=2000, FLY_HALF=54, FLY_H=12, FLY_DECK=14;
 let flyovers=[];
 function sharesNode(a,b){ return a.a===b.a||a.a===b.b||a.b===b.a||a.b===b.b; }
-function computeFlyovers(){ flyovers=[]; const es=[...edges.values()].filter(e=>!e.internal), idx=new Map(es.map((e,i)=>[e,i])), pairs=new Set();
+function computeFlyovers(){ flyovers=[]; const cand=[]; const es=[...edges.values()].filter(e=>!e.internal), idx=new Map(es.map((e,i)=>[e,i])), pairs=new Set();
   for(const l of edgeHash.values()) for(let x=0;x<l.length;x++) for(let y=x+1;y<l.length;y++){ const i=idx.get(l[x]), j=idx.get(l[y]); if(i==null||j==null) continue; pairs.add(i<j?i*100000+j:j*100000+i); }
   for(const pk of [...pairs].sort((u,v)=>u-v)){ const a=es[Math.floor(pk/100000)], b=es[pk%100000]; if(sharesNode(a,b)) continue;
     const A1=nodes[a.a],B1=nodes[a.b],A2=nodes[b.a],B2=nodes[b.b];
     if(Math.max(A1.x,B1.x)<Math.min(A2.x,B2.x)||Math.max(A2.x,B2.x)<Math.min(A1.x,B1.x)||Math.max(A1.y,B1.y)<Math.min(A2.y,B2.y)||Math.max(A2.y,B2.y)<Math.min(A1.y,B1.y)) continue;
     const t=segX(A1,B1,A2,B2); if(t===null) continue; const t2=segX(A2,B2,A1,B1); if(t2===null) continue;
     const mk=(e,tt)=>{ const U1=nodes[e.a], U2=nodes[e.b], f={e, t:tt, x:U1.x+(U2.x-U1.x)*tt, y:U1.y+(U2.y-U1.y)*tt, ang:Math.atan2(U2.y-U1.y,U2.x-U1.x)}; traceFly(f); f.room=Math.min(-f.span[0],f.span[1]); return f; };
-    const fa=mk(a,t), fb=mk(b,t2); flyovers.push(fa.room>=fb.room ? fa : fb); } }
+    cand.push([mk(a,t),mk(b,t2)]); }
+  // raise the line that crosses several tracks close together, so they share one bridge
+  const hits=f=>{ const g={e:f.e,x:f.x,y:f.y}; traceFly(g,FLY_HALF*2+60,FLY_HALF*2+60); let n=0; for(const c of cand) for(const o of c) if(o.e!==f.e && Math.hypot(o.x-f.x,o.y-f.y)>2 && Math.hypot(o.x-f.x,o.y-f.y)<FLY_HALF*2+60 && sOnPoly(g.poly,o.x,o.y)!==null){ n++; break; } return n; };
+  for(const [fa,fb] of cand){ const ha=hits(fa), hb=hits(fb); flyovers.push(ha!==hb ? (ha>hb?fa:fb) : (fa.room>=fb.room?fa:fb)); }
+  // crossings close together on one line become one long bridge instead of a row of humps
+  for(let again=true; again;){ again=false;
+    for(let i=0;i<flyovers.length && !again;i++) for(let j=0;j<flyovers.length && !again;j++){ if(i===j) continue; const f=flyovers[i], o=flyovers[j];
+      if(Math.hypot(o.x-f.x,o.y-f.y) > Math.max(-f.span[0],f.span[1])+FLY_HALF+60) continue;
+      const g={e:f.e,x:f.x,y:f.y}; traceFly(g,f.d1+FLY_HALF*2+80,-f.d0+FLY_HALF*2+80);
+      const so=sOnPoly(g.poly,o.x,o.y); if(so===null) continue;
+      const lo=Math.min(f.d0,so-FLY_DECK), hi=Math.max(f.d1,so+FLY_DECK), m={e:f.e,x:f.x,y:f.y,ang:f.ang};
+      traceFly(m,hi+FLY_HALF-FLY_DECK,-lo+FLY_HALF-FLY_DECK); m.d0=lo; m.d1=hi;
+      flyovers=flyovers.filter(q=>q!==f && q!==o); flyovers.push(m); again=true; } } }
+// distance along a traced line to the point nearest (x,y), or null when the point is not on it
+function sOnPoly(P,x,y){ let best=null, bd=3; for(let i=0;i<P.length-1;i++){ const A=P[i], B=P[i+1], dx=B.x-A.x, dy=B.y-A.y, L2=dx*dx+dy*dy; if(L2<1e-6) continue;
+    const t=Math.max(0,Math.min(1,((x-A.x)*dx+(y-A.y)*dy)/L2)), d=Math.hypot(A.x+dx*t-x,A.y+dy*t-y); if(d<bd){ bd=d; best=A.s+(B.s-A.s)*t; } } return best; }
 // the raised part follows the line itself, through bends: a list of points with their distance s from the crossing
-function traceFly(f){ const e=f.e, X={x:f.x,y:f.y}; f.cuts=[]; f.nodes=[]; const half=[];
-  for(const [dirEnd,other] of [[e.b,e.a],[e.a,e.b]]){ const pts=[]; let from=other, to=dirEnd, cur=X, s=0, dStart=Math.hypot(X.x-nodes[from].x,X.y-nodes[from].y);
-    for(let guard=0; guard<40 && s<FLY_HALF; guard++){ const T2=nodes[to], L=Math.hypot(T2.x-cur.x,T2.y-cur.y), need=FLY_HALF-s, k=ekey(from,to), E=edges.get(k);
-      if(L>=need){ const f2=need/L, end={x:cur.x+(T2.x-cur.x)*f2, y:cur.y+(T2.y-cur.y)*f2}; pts.push({...end, s:FLY_HALF}); f.cuts.push({k,from,d0:dStart,d1:dStart+need}); s=FLY_HALF; break; }
+function traceFly(f,hF=FLY_HALF,hB=FLY_HALF){ const e=f.e, X={x:f.x,y:f.y}; f.cuts=[]; f.nodes=[]; const half=[]; if(f.d0==null){ f.d0=-FLY_DECK; f.d1=FLY_DECK; }
+  for(const [dirEnd,other,H] of [[e.b,e.a,hF],[e.a,e.b,hB]]){ const pts=[]; let from=other, to=dirEnd, cur=X, s=0, dStart=Math.hypot(X.x-nodes[from].x,X.y-nodes[from].y);
+    for(let guard=0; guard<80 && s<H; guard++){ const T2=nodes[to], L=Math.hypot(T2.x-cur.x,T2.y-cur.y), need=H-s, k=ekey(from,to), E=edges.get(k);
+      if(L>=need){ const f2=need/L, end={x:cur.x+(T2.x-cur.x)*f2, y:cur.y+(T2.y-cur.y)*f2}; pts.push({...end, s:H}); f.cuts.push({k,from,d0:dStart,d1:dStart+need}); s=H; break; }
       s+=L; pts.push({x:T2.x,y:T2.y,s}); f.cuts.push({k,from,d0:dStart,d1:E?E.len:dStart+L});
       const nb=[...(adj.get(to)||[])].filter(x=>x!==from); if(nb.length!==1 || portOf.has(to) || nodeSite.has(to)) break; f.nodes.push(to);
       from=to; to=nb[0]; cur=nodes[from]; dStart=0; }
     half.push(pts); }
   f.poly=[...half[1].slice().reverse().map(q=>({...q,s:-q.s})), {x:X.x,y:X.y,s:0}, ...half[0]]; f.span=[f.poly[0].s, f.poly[f.poly.length-1].s]; f.keys=new Set(f.cuts.map(c=>c.k)); }
-const flyHeight=(f,s)=>{ const a=Math.abs(s), end=s<0?-f.span[0]:f.span[1]; return FLY_H*Math.max(0,Math.min(1,(end-a)/(FLY_HALF-FLY_DECK))); };   // never a cliff: short ramps simply stay lower
+const flyHeight=(f,s)=>{ if(s>=f.d0 && s<=f.d1) return FLY_H; const k = s>f.d1 ? (f.span[1]-s)/(FLY_HALF-FLY_DECK) : (s-f.span[0])/(FLY_HALF-FLY_DECK); return FLY_H*Math.max(0,Math.min(1,k)); };   // flat over the deck, ramps either end; never a cliff
+const onDeck=(f,s,m=0)=>s>=f.d0-m && s<=f.d1+m;
 function countNewCrossings(P){ let n=0; if(!edgeHash) buildEdgeHash();
   for(let i=0;i<P.length-1;i++){ const seen=new Set(), es=[]; const p=P[i], q=P[i+1];
     for(let cx=Math.floor(Math.min(p.x,q.x)/EH); cx<=Math.floor(Math.max(p.x,q.x)/EH); cx++) for(let cy=Math.floor(Math.min(p.y,q.y)/EH); cy<=Math.floor(Math.max(p.y,q.y)/EH); cy++){ const l=edgeHash.get(cx+','+cy); if(l) for(const e of l) if(!seen.has(e)){ seen.add(e); if(!e.internal && edges.get(ekey(e.a,e.b))===e) es.push(e); } }
     for(const e of es){ const A=nodes[e.a],B=nodes[e.b]; if(Math.hypot(A.x-P[i].x,A.y-P[i].y)<1||Math.hypot(B.x-P[i].x,B.y-P[i].y)<1||Math.hypot(A.x-P[i+1].x,A.y-P[i+1].y)<1||Math.hypot(B.x-P[i+1].x,B.y-P[i+1].y)<1) continue; const t=segX(P[i],P[i+1],A,B); if(t!==null && t>0.01 && t<0.99) n++; } }
   return n; }
 // height of the raised line at a point; ks (an edge key or a set of them) limits it to the line that is actually raised
-function flyH(x,y,ang,ks){ for(const f of flyovers){ if(Math.abs(x-f.x)>FLY_HALF+6 || Math.abs(y-f.y)>FLY_HALF+6) continue; const P=f.poly;
+function flyH(x,y,ang,ks){ for(const f of flyovers){ const R=Math.max(-f.span[0],f.span[1])+6; if(Math.abs(x-f.x)>R || Math.abs(y-f.y)>R) continue; const P=f.poly;
     if(ks!=null && !(typeof ks==='string' ? f.keys.has(ks) : [...ks].some(k=>f.keys.has(k)))) continue;
     for(let i=0;i<P.length-1;i++){ const A=P[i], B=P[i+1], dx=B.x-A.x, dy=B.y-A.y, L2=dx*dx+dy*dy; if(L2<1e-6) continue; let t=((x-A.x)*dx+(y-A.y)*dy)/L2; if(t<-0.02||t>1.02) continue; t=Math.max(0,Math.min(1,t));
       if(Math.hypot(A.x+dx*t-x,A.y+dy*t-y)<3 && Math.abs(Math.cos(ang-Math.atan2(dy,dx)))>0.8) return flyHeight(f,A.s+(B.s-A.s)*t); } }
@@ -2228,10 +2241,13 @@ function addFlyover(f){ const g=new T.Group(); flyGroup.add(g); const P=f.poly, 
     for(const z of [-5,5]) p.add(mesh(box,M_CONC,0,0.6,z,L+0.6,1.4,0.5,false));               // low parapets
     g.add(p);
     if(hm>0.4){ const yaw=-Math.atan2(B.y-A.y,B.x-A.x);
-      if(clear && Math.abs(sm)>FLY_DECK){ const w=mesh(box,M_WALL,0,0,0,L+0.7,hm,9.6); w.position.set(mx-CX,gh+hm/2-1.2,my-CZ); w.rotation.y=yaw; g.add(w); }   // the ramp: a solid wall-sided embankment
+      if(clear && !onDeck(f,sm)){ const w=mesh(box,M_WALL,0,0,0,L+0.7,hm,9.6); w.position.set(mx-CX,gh+hm/2-1.2,my-CZ); w.rotation.y=yaw; g.add(w); }   // the ramp: a solid wall-sided embankment
       else if(clear && hm>3 && i-lastPier>=3){ lastPier=i; for(const z of [-3,3]){ const c=mesh(cyl8,M_CONC,0,0,0,1,hm-1,1); c.position.set(mx-CX-Math.sin(yaw)*z,gh+(hm-1)/2-1,my-CZ-Math.cos(yaw)*z); g.add(c); }
         const cap=mesh(box,M_CONC,0,0,0,2.2,1,10); cap.position.set(mx-CX,gh+hm-1.6,my-CZ); cap.rotation.y=yaw; g.add(cap); } }
-    if(Math.abs(sm)<FLY_DECK+4) for(const z of [-5.4,5.4]){ const gd=mesh(box,M.girder,0,0,0,L+0.4,2.2,0.6); gd.position.set(mx-CX,hm+gh-0.4,my-CZ); gd.rotation.set(0,-Math.atan2(B.y-A.y,B.x-A.x),0); gd.translateZ(z); g.add(gd); }   // steel side girders over the line below
+    if(onDeck(f,sm,4)){ const yaw=-Math.atan2(B.y-A.y,B.x-A.x), t=new T.Group(); t.position.set(mx-CX,hm+gh,my-CZ); t.rotation.y=yaw;   // steel through-truss over the deck
+      for(const z of [-5.4,5.4]){ t.add(mesh(box,M.girder,0,-0.4,z,L+0.4,2.2,0.6)); t.add(mesh(box,M.girder,0,8.2,z,L+0.4,0.8,0.8));
+        t.add(mesh(box,M.girder,-L/2,4,z,0.7,8.4,0.7)); const d=mesh(box,M.girder,0,4,z,0.5,Math.hypot(L,8.2),0.5); d.rotation.z=(i%2?1:-1)*Math.atan2(L,8.2); t.add(d); }
+      if(i%2===0) t.add(mesh(box,M.girder,-L/2,8.2,0,0.6,0.6,11.2)); g.add(t); }
   } }
 const switchGroup=new T.Group(), bridgeGroup=new T.Group(), portalGroup=new T.Group(); scene.add(switchGroup); scene.add(bridgeGroup); scene.add(portalGroup);
 // the edge itself and the ones it carries on into: everything else nearby is another line
@@ -2286,9 +2302,6 @@ function rebuildTracks(){
     if(px0===null || Math.hypot(s.x1-px0,s.y1-py0)>0.5) carry=2.3; px0=s.x2; py0=s.y2;
     let d=s.thr?L:carry; for(; d<L && sl<MAXS*8; d+=4.6){ const f=d/L; setInst(sleeperIM,sl++,s.x1+dx*f-CX,1.55+h1+(h2-h1)*f,s.y1+dy*f-CZ,1.8,0.7,8.4,ang); } carry=d-L; }
   for(const [id,set] of adj){ if(!set.size||pd>=MAXS||set.size===2||nodeSite.has(id)||portOf.has(id)) continue; const n=nodes[id]; setInst(padIM,pd++,n.x-CX,0.6+hillH(n.x,n.y),n.y-CZ,5.2,1.2,5.2); }
-  for(const st of SITES) for(const L of st.side){ const used=L.filter(portUsed); if(!used.length || L.length<2 || b>=MAXS) continue; const po=portOf.get(L[0]);
-    const D=Math.max(...used.map(u=>{ const F=fanPt(u), n=nodes[u]; return Math.hypot(F.x-n.x,F.y-n.y); })), lx=po.dir*(st.plen/2+(po.dir>0?4:8)+D/2-3), [cx,cy]=toW(st,lx,0);
-    setInstP(ballastIM,b++,cx-CX,-0.05,cy-CZ,D+8,1.45,(st.plat-1)*PLAT_GAP+15,-st.ang,0); }
   ballastIM.count=b; railIM.count=r; sleeperIM.count=sl; padIM.count=pd;
   [ballastIM,railIM,sleeperIM,padIM].forEach(m=>m.instanceMatrix.needsUpdate=true);
   bridgeGroup.clear(); portalGroup.clear(); switchGroup.clear(); flyGroup.clear(); flyovers.forEach(addFlyover); buildCatenary(vsegs.filter(s=>!s.thr));
@@ -2371,17 +2384,9 @@ function removeTrainMesh(tr){ (tr.parts||[]).forEach(p=>scene.remove(p)); tr.par
 function along(tl,D,fb){ let acc=0; for(let k=0;k<tl.length-1;k++){ const a=tl[k], b=tl[k+1]; const l=Math.hypot(b.x-a.x,b.y-a.y); if(acc+l>=D){ const f=(D-acc)/l; return {x:a.x+(b.x-a.x)*f, y:a.y+(b.y-a.y)*f, ang:Math.atan2(a.y-b.y,a.x-b.x)}; } acc+=l; }
   const last=tl[tl.length-1]; if(!last) return {x:0,y:0,ang:fb}; let ang=fb; if(tl.length>1){ const p=tl[tl.length-2]; ang=Math.atan2(p.y-last.y,p.x-last.x); } return {x:last.x,y:last.y,ang}; }
 // Inside a station a train runs straight along its own platform track: the station centre is replaced by the platform end.
-// where a line's switches start: a little way out from the platform end, along the line's straight lead
-function fanPt(id){ const po=portOf.get(id), n=nodes[id], ox=po.s.ax[0]*po.dir, oy=po.s.ax[1]*po.dir; let D=THROAT-2;
-  for(const x of adj.get(id)||[]){ if(internalEdge(id,x)) continue; const pr=(nodes[x].x-n.x)*ox+(nodes[x].y-n.y)*oy; if(pr>4) D=Math.min(D,pr-1); }
-  return {x:n.x+ox*D, y:n.y+oy*D}; }
-// Through the station throat a train runs on a diagonal from the line's switch to its platform track.
+// Inside a station a train runs straight along its own platform track: the station centre is replaced by the platform end.
 function NP(p,i){ const id=p[i], s=nodeSite.get(id);
-  if(!s){ const po=portOf.get(id); if(po){ const same=j=>{ const q=portOf.get(p[j]); return !!q && q.s===po.s && q.dir===po.dir; };
-      let i0=i, i1=i; while(i0>0 && same(i0-1)) i0--; while(i1<p.length-1 && same(i1+1)) i1++;
-      if(i1>i0){ const end=(j,o)=>{ const x=p[o]; return (x!=null && !portOf.has(x) && !nodeSite.has(x)) ? fanPt(p[j]) : nodes[p[j]]; };
-        const A=end(i0,i0-1), B=end(i1,i1+1), f=(i-i0)/(i1-i0); return {x:A.x+(B.x-A.x)*f, y:A.y+(B.y-A.y)*f}; } }
-    return nodes[id]; } const nb=p[i>0?i-1:i+1], po=portOf.get(nb); if(!po || po.s!==s) return nodes[id];
+  if(!s){ const po=portOf.get(id); if(po){ const pr=p[i-1], nx=p[i+1], lineSide=(portOf.has(pr) && nx!=null && !portOf.has(nx) && !nodeSite.has(nx)) || (portOf.has(nx) && pr!=null && !portOf.has(pr) && !nodeSite.has(pr)); if(lineSide){ const n=nodes[id]; return {x:n.x+po.s.ax[0]*po.dir*18, y:n.y+po.s.ax[1]*po.dir*18}; } } return nodes[id]; } const nb=p[i>0?i-1:i+1], po=portOf.get(nb); if(!po || po.s!==s) return nodes[id];
   const oz=po.k*PLAT_GAP-(s.plat-1)/2*PLAT_GAP, [x,y]=toW(s, (i>0?-po.dir:po.dir)*s.front, oz); return {x,y}; }
 const segLen=(p,i)=>{ const A=NP(p,i), B=NP(p,i+1); return Math.hypot(B.x-A.x,B.y-A.y); };
 function pos(tr){
@@ -3329,7 +3334,7 @@ function renderMenu(){ if(menuEl.hidden) return; const prog=hasProgress(); let h
   else if(menuView==='rules'){ h=`${backBtn()}<h2>${L('Pravidla','Rules','Regeln')}</h2>
       <p>${L(`Propoj Česko železnicí a vozi městům, co potřebují. Začínáš s ${fmtK(START_MONEY)}.`,`Connect Czechia by rail and bring cities what they need. You start with ${fmtK(START_MONEY)}.`,`Verbinde Tschechien per Bahn und bring den Städten, was sie brauchen. Du startest mit ${fmtK(START_MONEY)}.`)}</p>
       <ol>${introItems().map(x=>`<li>${x}</li>`).join('')}
-      <li>${L('Každý konec stanice má zhlaví s výhybkami: vlak z trati vjede na kteroukoli volnou kolej. Výhybku mimo stanici postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','Every station end has a throat with switches: a train from the line can take any free platform track. Build a switch out on the line by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Jedes Bahnhofsende hat ein Weichenvorfeld: Ein Zug von der Strecke kann jedes freie Bahnsteiggleis nehmen. Eine Weiche auf der Strecke baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
+      <li>${L('Trať se ve stanici napojí jen na jednu kolej. Výhybku postavíš tak, že novou trať začneš na existující koleji. Vlak odjede, jen když je trať volná a v cíli na něj čeká volná kolej.','A line joins only one platform track. Build a switch by starting a new line on an existing track. A train leaves only when the line is clear and a free track waits at the destination.','Eine Strecke schließt nur an ein Bahnsteiggleis an. Eine Weiche baust du, indem du eine neue Strecke auf einem bestehenden Gleis beginnst. Ein Zug fährt nur ab, wenn die Strecke frei ist und am Ziel ein Gleis frei ist.')}</li>
       <li>${L('Město postoupí o úroveň, když dostane 5 vozů od každého zboží za 10 minut. Když pak zásobování vázne, může o úroveň spadnout.','A city levels up after receiving 5 wagons of each good within 10 minutes. If supplies then dry up, it can drop a level.','Eine Stadt steigt auf, wenn sie 5 Wagen jeder Ware in 10 Minuten bekommt. Bleibt die Versorgung danach aus, kann sie wieder absteigen.')}</li></ol>
       <p class="sub">${L('Na počítači: kolečko myši přibližuje, levým tlačítkem táhneš koleje nebo posouváš mapu, pravým tlačítkem mapu otáčíš. Šipky nebo WASD posouvají mapu, Q a E ji otáčí, + a − přibližují.','On a computer: the mouse wheel zooms, drag with the left button to lay track or move the map, drag with the right button to turn it. Arrow keys or WASD move the map, Q and E turn it, + and − zoom.','Am Computer: Mausrad zoomt, mit der linken Taste ziehst du Gleise oder verschiebst die Karte, mit der rechten drehst du sie. Pfeiltasten oder WASD verschieben, Q und E drehen, + und − zoomen.')}</p>
       <p class="sub">${L(`Vůz vydělá podle zboží a vzdálenosti. Jízda stojí ${COST.runPerKm} mincí za každý ujetý km (100 km = 500 mincí).`,`A wagon earns by cargo and distance. Running costs ${COST.runPerKm} coins per kilometre (100 km = 500 coins).`,`Ein Wagen verdient je nach Ware und Entfernung. Die Fahrt kostet ${COST.runPerKm} Münzen pro Kilometer (100 km = 500 Münzen).`)}</p>`; }
