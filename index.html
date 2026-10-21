@@ -2148,12 +2148,12 @@ function cornerR(n){ const [a,b]=[...adj.get(n)]; return Math.min(80, 0.46*Math.
 function bez(p0,p1,p2,u){ const v=1-u; return {x:v*v*p0.x+2*v*u*p1.x+u*u*p2.x, y:v*v*p0.y+2*v*u*p1.y+u*u*p2.y}; }
 function trackSegments(){
   const segs=[];
+  const flyNodes=new Set(); flyovers.forEach(f=>f.nodes.forEach(n=>flyNodes.add(n)));
   for(const e of edges.values()){ if(e.internal) continue; const A=nodes[e.a],B=nodes[e.b], [ux,uy]=unit(A.x,A.y,B.x,B.y);
-    const ca=cornerAtEnd(e.a,e.b)?cornerR(e.a):0, cb=cornerAtEnd(e.b,e.a)?cornerR(e.b):0;
+    const ca=cornerAtEnd(e.a,e.b)&&!flyNodes.has(e.a)?cornerR(e.a):0, cb=cornerAtEnd(e.b,e.a)&&!flyNodes.has(e.b)?cornerR(e.b):0;   // a bend lifted onto a bridge is not trimmed, so the track runs on to the ramp without a gap
     let pieces=[[ca,e.len-cb]];
     for(const f of flyovers) for(const cut of f.cuts){ if(cut.k!==ekey(e.a,e.b)) continue; const c0=cut.from===e.a?cut.d0:e.len-cut.d1, c1=cut.from===e.a?cut.d1:e.len-cut.d0, out=[]; for(const [p0,p1] of pieces){ if(c1<=p0||c0>=p1){ out.push([p0,p1]); continue; } if(c0>p0) out.push([p0,c0]); if(c1<p1) out.push([c1,p1]); } pieces=out; }
     const k=ekey(e.a,e.b); for(const [p0,p1] of pieces) if(p1-p0>0.5) segs.push({x1:A.x+ux*p0,y1:A.y+uy*p0,x2:A.x+ux*p1,y2:A.y+uy*p1,k}); }
-  const flyNodes=new Set(); flyovers.forEach(f=>f.nodes.forEach(n=>flyNodes.add(n)));
   for(const [n,set] of adj){ if(set.size!==2 || flyNodes.has(n)) continue; const [a,b]=[...set]; if(!isCorner(n,a,b)) continue; const N=nodes[n], R=cornerR(n);
     const [ax,ay]=unit(N.x,N.y,nodes[a].x,nodes[a].y), [bx,by]=unit(N.x,N.y,nodes[b].x,nodes[b].y);
     const p0={x:N.x+ax*R,y:N.y+ay*R}, p2={x:N.x+bx*R,y:N.y+by*R}, steps=Math.max(4,Math.round(R/5)); let prev=p0;
@@ -2241,7 +2241,7 @@ function addFlyover(f){ const g=new T.Group(); flyGroup.add(g); const P=f.poly, 
     for(const z of [-5,5]) p.add(mesh(box,M_CONC,0,0.6,z,L+0.6,1.4,0.5,false));               // low parapets
     g.add(p);
     if(hm>0.4){ const yaw=-Math.atan2(B.y-A.y,B.x-A.x);
-      if(clear && !onDeck(f,sm)){ const w=mesh(box,M_WALL,0,0,0,L+0.7,hm,9.6); w.position.set(mx-CX,gh+hm/2-1.2,my-CZ); w.rotation.y=yaw; g.add(w); }   // the ramp: a solid wall-sided embankment
+      if(clear && !onDeck(f,sm)) p.add(mesh(box,M_WALL,0,-hm/2-1.1,0,L+0.7,hm+1.4,9.6));   // the ramp: a wall-sided embankment sloping with the track, no steps
       else if(clear && hm>3 && i-lastPier>=3){ lastPier=i; for(const z of [-3,3]){ const c=mesh(cyl8,M_CONC,0,0,0,1,hm-1,1); c.position.set(mx-CX-Math.sin(yaw)*z,gh+(hm-1)/2-1,my-CZ-Math.cos(yaw)*z); g.add(c); }
         const cap=mesh(box,M_CONC,0,0,0,2.2,1,10); cap.position.set(mx-CX,gh+hm-1.6,my-CZ); cap.rotation.y=yaw; g.add(cap); } }
     if(onDeck(f,sm,4)){ const yaw=-Math.atan2(B.y-A.y,B.x-A.x), t=new T.Group(); t.position.set(mx-CX,hm+gh,my-CZ); t.rotation.y=yaw;   // steel through-truss over the deck
